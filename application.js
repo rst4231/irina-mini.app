@@ -1,14 +1,23 @@
 export function getApplicationViewState({ completed, approved, receivedTerms }) {
+  if (approved && receivedTerms) {
+    return {
+      status: 'Условия готовы',
+      icon: 'terms',
+      tone: 'terms',
+      action: {
+        label: 'Посмотреть условия',
+        url: 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f',
+        target: '_blank',
+      },
+    };
+  }
+
   if (approved) {
     return {
       status: 'Анкета одобрена',
-      icon: '✅',
+      icon: 'approved',
       tone: 'approved',
-      action: receivedTerms ? {
-        label: '👀 Посмотреть условия',
-        url: 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f',
-        target: '_blank',
-      } : {
+      action: {
         label: 'Обсудить условия',
         url: 'https://t.me/rstshelp_bot?start=6a3d21d4694618648d009d8d',
         hint: 'Займет 10–15 минут',
@@ -20,7 +29,7 @@ export function getApplicationViewState({ completed, approved, receivedTerms }) 
   if (completed) {
     return {
       status: 'Анкета заполнена',
-      icon: '⏳',
+      icon: 'pending',
       tone: 'complete',
       action: null,
     };
@@ -28,7 +37,7 @@ export function getApplicationViewState({ completed, approved, receivedTerms }) 
 
   return {
     status: 'Анкета не заполнена',
-    icon: '📝',
+    icon: 'form',
     tone: 'incomplete',
     action: {
       label: 'Заполнить анкету',

@@ -1,0 +1,142 @@
+.icon-svg {
+  width: 25px;
+  height: 25px;
+  display: block;
+  fill: currentColor;
+}
+
+.outside-telegram-icon .icon-svg {
+  width: 29px;
+  height: 29px;
+}
+
+.resource-icon {
+  color: #347ef4;
+}
+
+.resource-icon-gold {
+  color: #e7a816;
+}
+
+.application-card {
+  transition: background .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+
+.application-card.is-incomplete {
+  background: radial-gradient(circle at 87% 18%, rgba(221, 238, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(239,247,255,.8));
+}
+
+.application-card.is-complete {
+  background: radial-gradient(circle at 87% 18%, rgba(255, 240, 190, .66), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(255,249,229,.82));
+}
+
+.application-card.is-approved {
+  background: radial-gradient(circle at 87% 18%, rgba(210, 250, 227, .8), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(237,253,244,.82));
+}
+
+.application-card.is-terms {
+  background: radial-gradient(circle at 87% 18%, rgba(211, 243, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(236,251,255,.84));
+}
+
+.application-icon {
+  color: #347ef4;
+}
+
+.application-card.is-complete .application-icon {
+  color: #d89a00;
+  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,246,213,.88));
+}
+
+.application-card.is-approved .application-icon {
+  color: #22a75a;
+  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(229,251,239,.88));
+}
+
+.application-card.is-terms .application-icon {
+  color: #2588d9;
+  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(227,247,255,.9));
+}
+
+.application-icon .icon-svg {
+  width: 31px;
+  height: 31px;
+}
+
+.application-card.is-loading .application-icon {
+  min-width: 64px;
+  background: rgba(221, 233, 248, .82);
+  animation: skeleton-pulse 1.25s ease-in-out infinite;
+}
+
+.application-card.is-loading .application-status,
+.application-card.is-loading .application-description {
+  color: transparent;
+  border-radius: 999px;
+  background: rgba(218, 230, 246, .78);
+  animation: skeleton-pulse 1.25s ease-in-out infinite;
+}
+
+.application-card.is-loading .application-status {
+  width: min(72%, 215px);
+}
+
+.application-card.is-loading .application-description {
+  width: min(92%, 285px);
+}
+
+.application-card.is-loading .application-button,
+.application-card.is-loading .application-hint {
+  display: none !important;
+}
+
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: .58; }
+  50% { opacity: 1; }
+}
+
+.trusted-by {
+  padding-top: 15px;
+  padding-bottom: 14px;
+}
+
+.trusted-by-brands {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: 9px;
+  margin-top: 13px;
+}
+
+.trusted-logo {
+  width: 100%;
+  height: 24px;
+  overflow: visible;
+  opacity: .84;
+}
+
+.trusted-logo text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-size: 8.4px;
+  font-weight: 800;
+  letter-spacing: -.18px;
+  fill: currentColor;
+}
+
+.trusted-logo-keitaro { color: #1c8d43; fill: #1ca34b; }
+.trusted-logo-conversion { color: #1c2632; fill: #1c2632; }
+.trusted-logo-partnerkin { color: #26313d; fill: #26313d; }
+.trusted-logo-m1 { color: #b6202f; fill: #c62233; }
+.trusted-logo-nutra { color: #d97025; fill: #df7b31; }
+
+@media (max-width: 360px) {
+  .trusted-by-brands { gap: 5px; }
+  .trusted-logo text { font-size: 7.4px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .application-card.is-loading .application-icon,
+  .application-card.is-loading .application-status,
+  .application-card.is-loading .application-description {
+    animation: none;
+  }
+}
