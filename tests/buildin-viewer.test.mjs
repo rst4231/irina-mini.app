@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 
-test('Buildin viewer matches Teacher CPA crop and excludes View Terms', async () => {
+test('Buildin viewer matches current Teacher CPA crop and excludes View Terms', async () => {
   const source = await readFile(new URL('../buildin-viewer.js', import.meta.url), 'utf8');
   assert.match(source, /buildin\.ai/);
   assert.match(source, /anchor\.id==='application-button'/);
   assert.match(source, /transform:translateY\(-56px\)!important/);
   assert.match(source, /height:calc\(100% \+ 246px\)!important/);
-  assert.match(source, /@media \(min-width:768px\)/);
-  assert.match(source, /height:calc\(100% \+ 356px\)!important/);
+  assert.match(source, /@media \(min-width:700px\), \(hover:hover\) and \(pointer:fine\)/);
+  assert.match(source, /height:calc\(100% \+ 436px\)!important/);
   assert.match(source, /buildin-viewer__action--home/);
   assert.match(source, /buildin-viewer__action--back/);
   new vm.Script(source);
