@@ -55,13 +55,6 @@
     var actions=document.createElement('div');
     actions.className='buildin-viewer__actions';
 
-    var back=document.createElement('button');
-    back.type='button';
-    back.className='buildin-viewer__action buildin-viewer__action--back';
-    back.setAttribute('aria-label','Назад');
-    back.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Назад</span>';
-    back.addEventListener('click',goBack);
-
     var home=document.createElement('button');
     home.type='button';
     home.className='buildin-viewer__action buildin-viewer__action--home';
@@ -69,7 +62,6 @@
     home.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6"/></svg><span>Домой</span>';
     home.addEventListener('click',goHome);
 
-    actions.appendChild(back);
     actions.appendChild(home);
 
     frame=document.createElement('iframe');
@@ -117,17 +109,8 @@
     viewer.hidden=false;
     document.body.classList.add('buildin-viewer-open');
     document.body.style.overflow='hidden';
-    var back=viewer.querySelector('.buildin-viewer__action--back');
-    if(back)requestAnimationFrame(function(){back.focus({preventScroll:true});});
-  }
-
-  function goBack(){
-    if(!viewer||viewer.hidden)return;
-    if(viewerHistoryArmed){
-      window.history.back();
-      return;
-    }
-    closeViewer();
+    var home=viewer.querySelector('.buildin-viewer__action--home');
+    if(home)requestAnimationFrame(function(){home.focus({preventScroll:true});});
   }
 
   function goHome(){
