@@ -135,6 +135,12 @@ html[data-theme="dark"] .resource-chevron { color: #94a6c0; }
 html[data-theme="dark"] .footer-wave { background: linear-gradient(180deg, rgba(53,105,177,.10), rgba(17,23,34,0)); }
 html[data-theme="dark"] .outside-telegram-card p { color: #9eabc0; }
 
+html[data-theme="dark"] .trusted-logo { opacity: 1; }
+html[data-theme="dark"] .trusted-logo-conversion { color: #d7e6ff; fill: #d7e6ff; }
+html[data-theme="dark"] .trusted-logo-partnerkin { color: #b8c9e8; fill: #b8c9e8; }
+html[data-theme="dark"] .trusted-logo text { fill: currentColor; }
+
+
 @media (max-width: 360px) {
   .trusted-by-brands { gap: 5px; }
   .trusted-logo text { font-size: 7.4px; }
