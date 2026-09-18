@@ -1,3 +1,11 @@
+:root {
+  --app-safe-top: 0px;
+  --app-safe-right: 0px;
+  --app-safe-bottom: 0px;
+  --app-safe-left: 0px;
+  --app-viewport-height: 100dvh;
+}
+
 .icon-svg {
   width: 25px;
   height: 25px;
@@ -5,69 +13,38 @@
   fill: currentColor;
 }
 
-.outside-telegram-icon .icon-svg {
-  width: 29px;
-  height: 29px;
+.outside-telegram-icon .icon-svg { width: 29px; height: 29px; }
+.resource-icon { color: #347ef4; }
+.resource-icon-gold { color: #e7a816; }
+
+.app-shell {
+  min-height: var(--app-viewport-height, var(--tg-viewport-stable-height, 100dvh));
+  padding-top: calc(18px + max(env(safe-area-inset-top, 0px), var(--app-safe-top)));
+  padding-right: calc(16px + max(env(safe-area-inset-right, 0px), var(--app-safe-right)));
+  padding-bottom: calc(18px + max(env(safe-area-inset-bottom, 0px), var(--app-safe-bottom)));
+  padding-left: calc(16px + max(env(safe-area-inset-left, 0px), var(--app-safe-left)));
 }
 
-.resource-icon {
-  color: #347ef4;
+.app-content {
+  min-height: calc(var(--app-viewport-height, 100dvh) - 36px - max(env(safe-area-inset-top, 0px), var(--app-safe-top)) - max(env(safe-area-inset-bottom, 0px), var(--app-safe-bottom)));
 }
 
-.resource-icon-gold {
-  color: #e7a816;
-}
-
-.application-card {
-  transition: background .3s ease, box-shadow .3s ease, border-color .3s ease;
-}
-
-.application-card.is-incomplete {
-  background: radial-gradient(circle at 87% 18%, rgba(221, 238, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(239,247,255,.8));
-}
-
-.application-card.is-complete {
-  background: radial-gradient(circle at 87% 18%, rgba(255, 240, 190, .66), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(255,249,229,.82));
-}
-
-.application-card.is-approved {
-  background: radial-gradient(circle at 87% 18%, rgba(210, 250, 227, .8), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(237,253,244,.82));
-}
-
-.application-card.is-terms {
-  background: radial-gradient(circle at 87% 18%, rgba(211, 243, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(236,251,255,.84));
-}
-
-.application-icon {
-  color: #347ef4;
-}
-
-.application-card.is-complete .application-icon {
-  color: #d89a00;
-  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,246,213,.88));
-}
-
-.application-card.is-approved .application-icon {
-  color: #22a75a;
-  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(229,251,239,.88));
-}
-
-.application-card.is-terms .application-icon {
-  color: #2588d9;
-  background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(227,247,255,.9));
-}
-
-.application-icon .icon-svg {
-  width: 31px;
-  height: 31px;
-}
+.application-card { transition: background .3s ease, box-shadow .3s ease, border-color .3s ease; }
+.application-card.is-incomplete { background: radial-gradient(circle at 87% 18%, rgba(221, 238, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(239,247,255,.8)); }
+.application-card.is-complete { background: radial-gradient(circle at 87% 18%, rgba(255, 240, 190, .66), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(255,249,229,.82)); }
+.application-card.is-approved { background: radial-gradient(circle at 87% 18%, rgba(210, 250, 227, .8), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(237,253,244,.82)); }
+.application-card.is-terms { background: radial-gradient(circle at 87% 18%, rgba(211, 243, 255, .82), transparent 32%), linear-gradient(135deg, rgba(255,255,255,.91), rgba(236,251,255,.84)); }
+.application-icon { color: #347ef4; }
+.application-card.is-complete .application-icon { color: #d89a00; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(255,246,213,.88)); }
+.application-card.is-approved .application-icon { color: #22a75a; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(229,251,239,.88)); }
+.application-card.is-terms .application-icon { color: #2588d9; background: linear-gradient(145deg, rgba(255,255,255,.94), rgba(227,247,255,.9)); }
+.application-icon .icon-svg { width: 31px; height: 31px; }
 
 .application-card.is-loading .application-icon {
   min-width: 64px;
   background: rgba(221, 233, 248, .82);
   animation: skeleton-pulse 1.25s ease-in-out infinite;
 }
-
 .application-card.is-loading .application-status,
 .application-card.is-loading .application-description {
   color: transparent;
@@ -75,68 +52,103 @@
   background: rgba(218, 230, 246, .78);
   animation: skeleton-pulse 1.25s ease-in-out infinite;
 }
-
-.application-card.is-loading .application-status {
-  width: min(72%, 215px);
-}
-
-.application-card.is-loading .application-description {
-  width: min(92%, 285px);
-}
-
+.application-card.is-loading .application-status { width: min(72%, 215px); }
+.application-card.is-loading .application-description { width: min(92%, 285px); }
 .application-card.is-loading .application-button,
-.application-card.is-loading .application-hint {
-  display: none !important;
+.application-card.is-loading .application-hint,
+.application-card.is-loading .application-sync-hint { display: none !important; }
+
+.application-sync-hint {
+  margin-top: 8px;
+  text-align: center;
+  color: #8b97aa;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.3;
 }
 
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: .58; }
-  50% { opacity: 1; }
-}
+@keyframes skeleton-pulse { 0%, 100% { opacity: .58; } 50% { opacity: 1; } }
 
-.trusted-by {
-  padding-top: 15px;
-  padding-bottom: 14px;
-}
-
-.trusted-by-brands {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: center;
-  gap: 9px;
-  margin-top: 13px;
-}
-
-.trusted-logo {
-  width: 100%;
-  height: 24px;
-  overflow: visible;
-  opacity: .84;
-}
-
-.trusted-logo text {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-  font-size: 8.4px;
-  font-weight: 800;
-  letter-spacing: -.18px;
-  fill: currentColor;
-}
-
+.trusted-by { padding-top: 15px; padding-bottom: 14px; }
+.trusted-by-brands { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; gap: 9px; margin-top: 13px; }
+.trusted-logo { width: 100%; height: 24px; overflow: visible; opacity: .84; }
+.trusted-logo text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 8.4px; font-weight: 800; letter-spacing: -.18px; fill: currentColor; }
 .trusted-logo-keitaro { color: #1c8d43; fill: #1ca34b; }
 .trusted-logo-conversion { color: #1c2632; fill: #1c2632; }
 .trusted-logo-partnerkin { color: #26313d; fill: #26313d; }
 .trusted-logo-m1 { color: #b6202f; fill: #c62233; }
 .trusted-logo-nutra { color: #d97025; fill: #df7b31; }
 
+html[data-theme="dark"],
+html[data-theme="dark"] body {
+  color-scheme: dark;
+  background: radial-gradient(circle at 85% 5%, rgba(55, 110, 180, .18), transparent 30%), linear-gradient(180deg, #111722 0%, #0d131d 100%);
+  color: #f2f6ff;
+}
+
+html[data-theme="dark"] .app-shell {
+  background: radial-gradient(circle at 88% 13%, rgba(85, 144, 222, .08), transparent 20%), radial-gradient(circle at 8% 44%, rgba(54, 112, 188, .1), transparent 26%);
+}
+html[data-theme="dark"] .loading-screen,
+html[data-theme="dark"] .outside-telegram-screen { background: #111722; color: #f2f6ff; }
+html[data-theme="dark"] .outside-telegram-card,
+html[data-theme="dark"] .resource-button,
+html[data-theme="dark"] .trusted-by {
+  border-color: rgba(255,255,255,.08);
+  background: linear-gradient(145deg, rgba(31,41,56,.94), rgba(22,31,44,.9));
+  box-shadow: 0 16px 38px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html[data-theme="dark"] .profile-name,
+html[data-theme="dark"] .application-status,
+html[data-theme="dark"] .resource-title,
+html[data-theme="dark"] .trusted-by-title { color: #f2f6ff; }
+html[data-theme="dark"] .profile-username,
+html[data-theme="dark"] .profile-date-row,
+html[data-theme="dark"] .application-description,
+html[data-theme="dark"] .resource-subtitle,
+html[data-theme="dark"] .app-footer,
+html[data-theme="dark"] .application-sync-hint { color: #9eabc0; }
+html[data-theme="dark"] .avatar-wrap,
+html[data-theme="dark"] .application-icon,
+html[data-theme="dark"] .resource-chevron,
+html[data-theme="dark"] .footer-telegram-icon {
+  border-color: rgba(255,255,255,.08);
+  background: linear-gradient(145deg, rgba(38,51,70,.95), rgba(27,38,54,.95));
+  box-shadow: 0 10px 24px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html[data-theme="dark"] .avatar-wrap::after { border-color: #111722; }
+html[data-theme="dark"] .application-card {
+  border-color: rgba(255,255,255,.08);
+  box-shadow: 0 20px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.04);
+}
+html[data-theme="dark"] .application-card.is-incomplete { background: radial-gradient(circle at 87% 18%, rgba(54,126,218,.18), transparent 33%), linear-gradient(135deg, #1b2636, #162130); }
+html[data-theme="dark"] .application-card.is-complete { background: radial-gradient(circle at 87% 18%, rgba(215,159,31,.18), transparent 33%), linear-gradient(135deg, #262519, #1c2028); }
+html[data-theme="dark"] .application-card.is-approved { background: radial-gradient(circle at 87% 18%, rgba(40,181,105,.17), transparent 33%), linear-gradient(135deg, #172b24, #17232a); }
+html[data-theme="dark"] .application-card.is-terms { background: radial-gradient(circle at 87% 18%, rgba(42,148,211,.18), transparent 33%), linear-gradient(135deg, #172832, #17232d); }
+html[data-theme="dark"] .application-card.is-loading .application-icon,
+html[data-theme="dark"] .application-card.is-loading .application-status,
+html[data-theme="dark"] .application-card.is-loading .application-description { background: rgba(56,69,87,.72); }
+html[data-theme="dark"] .resource-icon-blue { background: linear-gradient(145deg, rgba(39,62,91,.9), rgba(30,48,70,.9)); }
+html[data-theme="dark"] .resource-icon-gold { background: linear-gradient(145deg, rgba(76,63,30,.9), rgba(55,47,28,.9)); }
+html[data-theme="dark"] .resource-badge { border-color: rgba(88,157,255,.14); background: rgba(72,143,244,.15); color: #72adff; }
+html[data-theme="dark"] .resource-chevron { color: #94a6c0; }
+html[data-theme="dark"] .footer-wave { background: linear-gradient(180deg, rgba(53,105,177,.10), rgba(17,23,34,0)); }
+html[data-theme="dark"] .outside-telegram-card p { color: #9eabc0; }
+
 @media (max-width: 360px) {
   .trusted-by-brands { gap: 5px; }
   .trusted-logo text { font-size: 7.4px; }
 }
 
+@media (max-height: 760px) {
+  .app-shell {
+    padding-top: calc(10px + max(env(safe-area-inset-top, 0px), var(--app-safe-top)));
+    padding-bottom: calc(8px + max(env(safe-area-inset-bottom, 0px), var(--app-safe-bottom)));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .application-card.is-loading .application-icon,
   .application-card.is-loading .application-status,
-  .application-card.is-loading .application-description {
-    animation: none;
-  }
+  .application-card.is-loading .application-description { animation: none; }
 }

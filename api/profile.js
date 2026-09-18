@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 
 const SENDPULSE_BOT_ID = '6671465ac84ab24b4702fa25';
 const SENDPULSE_BASE = 'https://api.sendpulse.com/telegram';
+const DEFAULT_INIT_DATA_MAX_AGE_SECONDS = 21600;
+const MAX_FUTURE_SKEW_SECONDS = 60;
 
 function json(res, status, body) {
   res.statusCode = status;
@@ -10,11 +12,11 @@ function json(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
-function validateInitData(initData, botToken) {
+export function validateInitData(initData, botToken, options = {}) {
   if (!initData || !botToken) return null;
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
-  if (!hash) return null;
+  if (!hash || !/^[a-f0-9]{64}$/i.test(hash)) return null;
 
   params.delete('hash');
   const dataCheckString = [...params.entries()]
@@ -30,6 +32,17 @@ function validateInitData(initData, botToken) {
   if (receivedBuffer.length !== calculatedBuffer.length || !crypto.timingSafeEqual(receivedBuffer, calculatedBuffer)) {
     return null;
   }
+
+  const authDate = Number(params.get('auth_date'));
+  const nowSeconds = Number.isFinite(options.nowSeconds) ? options.nowSeconds : Math.floor(Date.now() / 1000);
+  const configuredMaxAge = Number(options.maxAgeSeconds);
+  const maxAgeSeconds = Number.isFinite(configuredMaxAge) && configuredMaxAge > 0
+    ? configuredMaxAge
+    : DEFAULT_INIT_DATA_MAX_AGE_SECONDS;
+
+  if (!Number.isInteger(authDate)) return null;
+  const ageSeconds = nowSeconds - authDate;
+  if (ageSeconds > maxAgeSeconds || ageSeconds < -MAX_FUTURE_SKEW_SECONDS) return null;
 
   const userRaw = params.get('user');
   if (!userRaw) return null;
@@ -102,8 +115,12 @@ export default async function handler(req, res) {
   const initData = typeof req.body?.initData === 'string' ? req.body.initData : '';
   if (!initData) return json(res, 400, { ok: false, error: 'missing_init_data' });
 
-  const user = validateInitData(initData, botToken);
-  if (!user?.id) return json(res, 401, { ok: false, error: 'invalid_init_data' });
+  const maxAgeFromEnv = Number(process.env.INIT_DATA_MAX_AGE_SECONDS);
+  const maxAgeSeconds = Number.isFinite(maxAgeFromEnv) && maxAgeFromEnv > 0
+    ? maxAgeFromEnv
+    : DEFAULT_INIT_DATA_MAX_AGE_SECONDS;
+  const user = validateInitData(initData, botToken, { maxAgeSeconds });
+  if (!user?.id) return json(res, 401, { ok: false, error: 'invalid_or_stale_init_data' });
 
   try {
     const contact = await getSendPulseContact(user.id, sendPulseApiKey);

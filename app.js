@@ -1,20 +1,20 @@
 import { formatRussianDayMonth, normalizeTelegramUser } from './profile.js';
 import { getApplicationViewState } from './application.js';
+import { DEFAULT_RUNTIME_CONFIG, getProfilePollInterval, mergeRuntimeConfig } from './runtime-config.js';
+import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './telegram-runtime.js';
 
 const telegram = window.Telegram?.WebApp;
+const hasTelegramContext = Boolean(telegram?.initData);
+const user = telegram?.initDataUnsafe?.user;
+const profile = normalizeTelegramUser(user);
+
+const PROFILE_STORAGE_KEY = 'irina.profile.v2';
+const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
+
 const loadingScreen = document.getElementById('loading-screen');
 const appShell = document.getElementById('app-shell');
 const outsideTelegramScreen = document.getElementById('outside-telegram-screen');
 const appContent = document.querySelector('.app-content');
-const hasTelegramContext = Boolean(telegram?.initData);
-
-if (hasTelegramContext) {
-  telegram.ready();
-  telegram.expand();
-}
-
-const user = telegram?.initDataUnsafe?.user;
-const profile = normalizeTelegramUser(user);
 const avatar = document.getElementById('profile-avatar');
 const initial = document.getElementById('profile-initial');
 const name = document.getElementById('profile-name');
@@ -26,6 +26,7 @@ const applicationStatus = document.getElementById('application-status');
 const applicationDescription = document.getElementById('application-description');
 const applicationButton = document.getElementById('application-button');
 const applicationHint = document.getElementById('application-hint');
+const applicationSyncHint = document.getElementById('application-sync-hint');
 const joinTeamButton = document.getElementById('join-team-button');
 const aboutButton = document.getElementById('about-button');
 const bookButton = document.getElementById('book-button');
@@ -33,6 +34,7 @@ const trustedByBlock = document.getElementById('trusted-by');
 const mentorButton = document.getElementById('mentor-button');
 const footerYear = document.getElementById('footer-year');
 const footerChannel = document.getElementById('footer-channel');
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 const APPLICATION_ICONS = {
   form: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M6 3h9l4 4v14H6V3Zm8 1.8V8h3.2L14 4.8ZM9 12h7v2H9v-2Zm0 4h7v2H9v-2Z"/></svg>',
@@ -41,18 +43,21 @@ const APPLICATION_ICONS = {
   terms: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M5 3h14v18H5V3Zm3 4h8V5H8v2Zm0 4h8V9H8v2Zm0 4h5v-2H8v2Zm7.2 3.4 4.1-4.1-1.4-1.4-2.7 2.7-1.2-1.2-1.4 1.4 2.6 2.6Z"/></svg>',
 };
 
+let runtimeConfig = mergeRuntimeConfig(DEFAULT_RUNTIME_CONFIG);
+let lastProfileData = null;
+let lastProfileStale = false;
 let previousApplicationTone = null;
+let profileTimer = null;
+let configTimer = null;
+let profileLoadInFlight = false;
+let fullscreenRequestedByApp = false;
 
 function hapticImpact(style = 'light') {
-  try {
-    telegram?.HapticFeedback?.impactOccurred?.(style);
-  } catch {}
+  try { telegram?.HapticFeedback?.impactOccurred?.(style); } catch {}
 }
 
 function hapticSuccess() {
-  try {
-    telegram?.HapticFeedback?.notificationOccurred?.('success');
-  } catch {}
+  try { telegram?.HapticFeedback?.notificationOccurred?.('success'); } catch {}
 }
 
 function setApplicationLoading(loading) {
@@ -60,36 +65,130 @@ function setApplicationLoading(loading) {
   applicationCard.setAttribute('aria-busy', loading ? 'true' : 'false');
 }
 
-name.textContent = profile.name;
-date.textContent = formatRussianDayMonth();
-initial.textContent = profile.initial;
-footerYear.textContent = new Date().getFullYear();
+function syncTelegramEnvironment() {
+  const root = document.documentElement;
+  const theme = resolveTheme(telegram || {});
+  root.dataset.theme = theme;
 
-if (profile.username) {
-  username.textContent = profile.username;
-  username.hidden = false;
-} else {
-  username.hidden = true;
+  const safe = normalizeInsets(telegram?.safeAreaInset);
+  const content = normalizeInsets(telegram?.contentSafeAreaInset);
+  const effective = {
+    top: Math.max(safe.top, content.top),
+    right: Math.max(safe.right, content.right),
+    bottom: Math.max(safe.bottom, content.bottom),
+    left: Math.max(safe.left, content.left),
+  };
+
+  root.style.setProperty('--app-safe-top', `${effective.top}px`);
+  root.style.setProperty('--app-safe-right', `${effective.right}px`);
+  root.style.setProperty('--app-safe-bottom', `${effective.bottom}px`);
+  root.style.setProperty('--app-safe-left', `${effective.left}px`);
+
+  const viewportHeight = Number(telegram?.viewportStableHeight || telegram?.viewportHeight);
+  if (Number.isFinite(viewportHeight) && viewportHeight > 0) {
+    root.style.setProperty('--app-viewport-height', `${viewportHeight}px`);
+  }
+
+  const background = theme === 'dark' ? '#111722' : '#f7faff';
+  themeColorMeta?.setAttribute('content', background);
+  try { telegram?.setHeaderColor?.(background); } catch {}
+  try { telegram?.setBackgroundColor?.(background); } catch {}
+  try { telegram?.setBottomBarColor?.(background); } catch {}
 }
 
-if (profile.photoUrl) {
-  avatar.src = profile.photoUrl;
-  avatar.hidden = false;
-  initial.hidden = true;
-  avatar.addEventListener('error', () => {
-    avatar.hidden = true;
-    initial.hidden = false;
-  }, { once: true });
-} else {
-  avatar.hidden = true;
-  initial.hidden = false;
+function maybeSyncFullscreen() {
+  if (!hasTelegramContext) return;
+  const shouldRequest = Boolean(runtimeConfig.telegram?.requestFullscreen);
+  if (shouldRequest && !fullscreenRequestedByApp && typeof telegram?.requestFullscreen === 'function') {
+    try {
+      telegram.requestFullscreen();
+      fullscreenRequestedByApp = true;
+    } catch {}
+  } else if (!shouldRequest && fullscreenRequestedByApp && telegram?.isFullscreen && typeof telegram?.exitFullscreen === 'function') {
+    try {
+      telegram.exitFullscreen();
+      fullscreenRequestedByApp = false;
+    } catch {}
+  }
 }
 
-function renderApplicationStatus(data) {
+function setResourceContent(button, { title, subtitle, url, badge }) {
+  if (!button) return;
+  if (url) button.href = url;
+  const titleElement = button.querySelector('.resource-title');
+  const subtitleElement = button.querySelector('.resource-subtitle');
+  const badgeElement = button.querySelector('.resource-badge');
+  if (titleElement) titleElement.textContent = title;
+  if (subtitleElement) subtitleElement.textContent = subtitle;
+  if (badgeElement && badge) badgeElement.textContent = badge;
+  if (title) button.setAttribute('aria-label', title);
+}
+
+function renderVisibility() {
+  const paid = Boolean(lastProfileData?.hasPaymentTag);
+  appContent?.classList.toggle('has-payment', paid);
+
+  applicationCard.hidden = paid;
+  joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
+  aboutButton.hidden = paid || !runtimeConfig.features.about;
+  bookButton.hidden = paid || !runtimeConfig.features.book;
+  trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
+  mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
+  footerChannel.hidden = paid || !runtimeConfig.features.channel;
+}
+
+function applyRuntimeConfig(config) {
+  runtimeConfig = mergeRuntimeConfig(config);
+
+  setResourceContent(joinTeamButton, {
+    title: runtimeConfig.copy.recruitmentTitle,
+    subtitle: runtimeConfig.copy.recruitmentSubtitle,
+    badge: runtimeConfig.copy.recruitmentBadge,
+    url: runtimeConfig.links.recruitment,
+  });
+  setResourceContent(aboutButton, {
+    title: runtimeConfig.copy.aboutTitle,
+    subtitle: runtimeConfig.copy.aboutSubtitle,
+    url: runtimeConfig.links.about,
+  });
+  setResourceContent(bookButton, {
+    title: runtimeConfig.copy.bookTitle,
+    subtitle: runtimeConfig.copy.bookSubtitle,
+    url: runtimeConfig.links.book,
+  });
+  setResourceContent(mentorButton, {
+    title: runtimeConfig.copy.mentorTitle,
+    subtitle: runtimeConfig.copy.mentorSubtitle,
+    url: runtimeConfig.links.mentor,
+  });
+  footerChannel.href = runtimeConfig.links.channel;
+
+  const trustedTitle = trustedByBlock.querySelector('.trusted-by-title');
+  if (trustedTitle?.childNodes?.[1]) trustedTitle.childNodes[1].nodeValue = runtimeConfig.copy.trustedByTitle;
+
+  const outsideTitle = outsideTelegramScreen.querySelector('h1');
+  const outsideDescription = outsideTelegramScreen.querySelector('p');
+  const outsideButton = outsideTelegramScreen.querySelector('.outside-telegram-button');
+  if (outsideTitle) outsideTitle.textContent = runtimeConfig.copy.outsideTitle;
+  if (outsideDescription) outsideDescription.textContent = runtimeConfig.copy.outsideDescription;
+  if (outsideButton) {
+    outsideButton.textContent = runtimeConfig.copy.outsideButton;
+    outsideButton.href = runtimeConfig.links.outsideBot;
+  }
+
+  renderVisibility();
+  if (lastProfileData && !lastProfileData.hasPaymentTag) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
+  maybeSyncFullscreen();
+  scheduleProfileRefresh();
+  scheduleConfigRefresh();
+}
+
+function renderApplicationStatus(data, { stale = false } = {}) {
   const state = getApplicationViewState({
     completed: Boolean(data?.applicationCompleted),
     approved: Boolean(data?.applicationApproved),
     receivedTerms: Boolean(data?.receivedTerms),
+    config: runtimeConfig,
   });
 
   setApplicationLoading(false);
@@ -97,36 +196,28 @@ function renderApplicationStatus(data) {
   applicationCard.classList.add(`is-${state.tone}`);
   applicationIcon.innerHTML = APPLICATION_ICONS[state.icon] || APPLICATION_ICONS.form;
   applicationStatus.textContent = state.status;
-
-  if (state.tone === 'terms') {
-    applicationDescription.textContent = 'Условия готовы. Посмотрите детали участия';
-  } else if (state.tone === 'approved') {
-    applicationDescription.textContent = 'Анкета одобрена. Обсудите условия участия';
-  } else if (state.tone === 'complete') {
-    applicationDescription.textContent = 'Анкета отправлена. Ожидайте результат проверки';
-  } else {
-    applicationDescription.textContent = 'Заполните короткую анкету и обсудите условия';
-  }
+  applicationDescription.textContent = state.description;
 
   if (previousApplicationTone && previousApplicationTone !== state.tone) {
-    const reachedPositiveState = state.tone === 'approved' || state.tone === 'terms';
-    if (reachedPositiveState) hapticSuccess();
+    if (state.tone === 'approved' || state.tone === 'terms') hapticSuccess();
   }
   previousApplicationTone = state.tone;
 
   if (state.action) {
-    applicationButton.innerHTML = `${state.action.label} <span class="application-arrow" aria-hidden="true">→</span>`;
+    applicationButton.textContent = state.action.label;
+    applicationButton.append(' ');
+    const arrow = document.createElement('span');
+    arrow.className = 'application-arrow';
+    arrow.setAttribute('aria-hidden', 'true');
+    arrow.textContent = '→';
+    applicationButton.append(arrow);
     applicationButton.href = state.action.url;
     applicationButton.target = state.action.target || '_self';
     applicationButton.dataset.closeMiniApp = state.action.closeMiniApp ? 'true' : 'false';
     applicationHint.textContent = state.action.hint || '';
     applicationHint.hidden = !state.action.hint;
-
-    if (state.action.target === '_blank') {
-      applicationButton.rel = 'noopener noreferrer';
-    } else {
-      applicationButton.removeAttribute('rel');
-    }
+    if (state.action.target === '_blank') applicationButton.rel = 'noopener noreferrer';
+    else applicationButton.removeAttribute('rel');
     applicationButton.hidden = false;
   } else {
     applicationButton.hidden = true;
@@ -135,6 +226,104 @@ function renderApplicationStatus(data) {
     applicationButton.removeAttribute('target');
     applicationButton.removeAttribute('rel');
     applicationButton.removeAttribute('data-close-mini-app');
+  }
+
+  applicationSyncHint.textContent = stale ? runtimeConfig.copy.staleData : '';
+  applicationSyncHint.hidden = !stale;
+}
+
+function renderProfileData(data, { stale = false } = {}) {
+  lastProfileData = data;
+  lastProfileStale = stale;
+  const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
+  name.textContent = sendPulseName || profile.name;
+  renderVisibility();
+  if (!data?.hasPaymentTag) renderApplicationStatus(data, { stale });
+  else setApplicationLoading(false);
+}
+
+async function loadCachedConfig() {
+  const cached = await getStoredJson(telegram, CONFIG_STORAGE_KEY);
+  if (cached?.config) applyRuntimeConfig(cached.config);
+}
+
+async function loadRuntimeConfig({ silent = false } = {}) {
+  try {
+    const response = await fetch('/api/config', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!response.ok) throw new Error(`Config request failed: ${response.status}`);
+    const payload = await response.json();
+    if (!payload?.config) throw new Error('Config payload missing');
+    applyRuntimeConfig(payload.config);
+    await setStoredJson(telegram, CONFIG_STORAGE_KEY, { config: runtimeConfig, savedAt: Date.now() });
+  } catch {
+    if (!silent) {
+      const cached = await getStoredJson(telegram, CONFIG_STORAGE_KEY);
+      if (cached?.config) applyRuntimeConfig(cached.config);
+    }
+  } finally {
+    scheduleConfigRefresh();
+  }
+}
+
+async function getCachedProfile() {
+  const cached = await getStoredJson(telegram, PROFILE_STORAGE_KEY);
+  if (!cached?.data) return null;
+  if (String(cached.telegramId || '') !== String(user?.id || '')) return null;
+  return cached;
+}
+
+function scheduleProfileRefresh() {
+  if (!hasTelegramContext) return;
+  clearTimeout(profileTimer);
+  const delay = getProfilePollInterval(lastProfileData || {}, runtimeConfig);
+  profileTimer = setTimeout(() => loadSendPulseProfile({ silent: true }), delay);
+}
+
+function scheduleConfigRefresh() {
+  clearTimeout(configTimer);
+  configTimer = setTimeout(() => loadRuntimeConfig({ silent: true }), runtimeConfig.polling.configMs);
+}
+
+async function loadSendPulseProfile({ silent = false } = {}) {
+  if (!telegram?.initData || profileLoadInFlight) return;
+  profileLoadInFlight = true;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+
+  try {
+    const response = await fetch('/api/profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: telegram.initData }),
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new Error(`Profile request failed: ${response.status}`);
+    const data = await response.json();
+    renderProfileData(data, { stale: false });
+    await setStoredJson(telegram, PROFILE_STORAGE_KEY, {
+      telegramId: String(user?.id || ''),
+      data,
+      savedAt: Date.now(),
+    });
+  } catch {
+    const cached = await getCachedProfile();
+    if (cached?.data) {
+      renderProfileData(cached.data, { stale: true });
+    } else if (!silent) {
+      setApplicationLoading(false);
+      applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms');
+      applicationCard.classList.add('is-incomplete');
+      applicationIcon.innerHTML = APPLICATION_ICONS.form;
+      applicationStatus.textContent = 'Не удалось проверить анкету';
+      applicationDescription.textContent = 'Попробуйте открыть приложение ещё раз';
+      applicationButton.hidden = true;
+      applicationHint.hidden = true;
+      applicationSyncHint.hidden = true;
+    }
+  } finally {
+    clearTimeout(timeout);
+    profileLoadInFlight = false;
+    scheduleProfileRefresh();
   }
 }
 
@@ -153,54 +342,43 @@ document.querySelectorAll('.resource-button, .footer-telegram-icon').forEach((el
   element.addEventListener('click', () => hapticImpact('light'));
 });
 
-async function loadSendPulseProfile(signal, { silent = false } = {}) {
-  if (!telegram?.initData) return;
+name.textContent = profile.name;
+date.textContent = formatRussianDayMonth();
+initial.textContent = profile.initial;
+footerYear.textContent = new Date().getFullYear();
 
-  try {
-    const response = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: telegram.initData }),
-      signal,
-    });
+if (profile.username) {
+  username.textContent = profile.username;
+  username.hidden = false;
+}
 
-    if (!response.ok) throw new Error(`Profile request failed: ${response.status}`);
+if (profile.photoUrl) {
+  avatar.src = profile.photoUrl;
+  avatar.hidden = false;
+  initial.hidden = true;
+  avatar.addEventListener('error', () => {
+    avatar.hidden = true;
+    initial.hidden = false;
+  }, { once: true });
+}
 
-    const data = await response.json();
-    const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
-    name.textContent = sendPulseName || profile.name;
-
-    const hasPaymentTag = Boolean(data?.hasPaymentTag);
-    appContent?.classList.toggle('has-payment', hasPaymentTag);
-    applicationCard.hidden = hasPaymentTag;
-    joinTeamButton.hidden = hasPaymentTag;
-    aboutButton.hidden = hasPaymentTag;
-    bookButton.hidden = hasPaymentTag;
-    trustedByBlock.hidden = hasPaymentTag;
-    mentorButton.hidden = !hasPaymentTag;
-    footerChannel.hidden = hasPaymentTag;
-
-    if (!hasPaymentTag) {
-      renderApplicationStatus(data);
-    } else {
-      setApplicationLoading(false);
-    }
-  } catch (error) {
-    if (error?.name === 'AbortError' && silent) return;
-    setApplicationLoading(false);
-    if (!silent) {
-      applicationCard.classList.remove('is-incomplete', 'is-complete', 'is-approved', 'is-terms');
-      applicationCard.classList.add('is-incomplete');
-      applicationIcon.innerHTML = APPLICATION_ICONS.form;
-      applicationStatus.textContent = 'Не удалось проверить анкету';
-      applicationDescription.textContent = 'Попробуйте открыть приложение ещё раз';
-      applicationButton.hidden = true;
-      applicationHint.hidden = true;
-    }
+if (hasTelegramContext) {
+  syncTelegramEnvironment();
+  telegram.ready();
+  telegram.expand();
+  for (const event of ['themeChanged', 'safeAreaChanged', 'contentSafeAreaChanged', 'viewportChanged', 'fullscreenChanged']) {
+    telegram.onEvent?.(event, syncTelegramEnvironment);
   }
+  telegram.onEvent?.('activated', () => {
+    loadRuntimeConfig({ silent: true });
+    loadSendPulseProfile({ silent: true });
+  });
 }
 
 async function startApp() {
+  await loadCachedConfig();
+  loadRuntimeConfig({ silent: true });
+
   if (!hasTelegramContext) {
     loadingScreen.hidden = true;
     appShell.hidden = true;
@@ -208,19 +386,12 @@ async function startApp() {
     return;
   }
 
+  const cached = await getCachedProfile();
+  if (cached?.data) renderProfileData(cached.data, { stale: true });
+
   loadingScreen.hidden = true;
   appShell.hidden = false;
-
-  const controller = new AbortController();
-  const maxWaitTimer = setTimeout(() => controller.abort(), 5000);
-  await loadSendPulseProfile(controller.signal);
-  clearTimeout(maxWaitTimer);
+  await loadSendPulseProfile({ silent: Boolean(cached?.data) });
 }
 
 startApp();
-
-if (hasTelegramContext) {
-  setInterval(() => {
-    loadSendPulseProfile(undefined, { silent: true });
-  }, 300000);
-}

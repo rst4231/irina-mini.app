@@ -1,12 +1,18 @@
-export function getApplicationViewState({ completed, approved, receivedTerms }) {
+import { DEFAULT_RUNTIME_CONFIG } from './runtime-config.js';
+
+export function getApplicationViewState({ completed, approved, receivedTerms, config = DEFAULT_RUNTIME_CONFIG }) {
+  const copy = config?.copy?.application || DEFAULT_RUNTIME_CONFIG.copy.application;
+  const links = config?.links || DEFAULT_RUNTIME_CONFIG.links;
+
   if (approved && receivedTerms) {
     return {
-      status: 'Условия готовы',
+      status: copy.terms.status,
+      description: copy.terms.description,
       icon: 'terms',
       tone: 'terms',
       action: {
-        label: 'Посмотреть условия',
-        url: 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f',
+        label: copy.terms.button,
+        url: links.viewTerms,
         target: '_blank',
       },
     };
@@ -14,13 +20,14 @@ export function getApplicationViewState({ completed, approved, receivedTerms }) 
 
   if (approved) {
     return {
-      status: 'Анкета одобрена',
+      status: copy.approved.status,
+      description: copy.approved.description,
       icon: 'approved',
       tone: 'approved',
       action: {
-        label: 'Обсудить условия',
-        url: 'https://t.me/rstshelp_bot?start=6a3d21d4694618648d009d8d',
-        hint: 'Займет 10–15 минут',
+        label: copy.approved.button,
+        url: links.discussTerms,
+        hint: copy.approved.hint,
         closeMiniApp: true,
       },
     };
@@ -28,7 +35,8 @@ export function getApplicationViewState({ completed, approved, receivedTerms }) 
 
   if (completed) {
     return {
-      status: 'Анкета заполнена',
+      status: copy.complete.status,
+      description: copy.complete.description,
       icon: 'pending',
       tone: 'complete',
       action: null,
@@ -36,13 +44,14 @@ export function getApplicationViewState({ completed, approved, receivedTerms }) 
   }
 
   return {
-    status: 'Анкета не заполнена',
+    status: copy.incomplete.status,
+    description: copy.incomplete.description,
     icon: 'form',
     tone: 'incomplete',
     action: {
-      label: 'Заполнить анкету',
-      url: 'https://t.me/rstshelp_bot?start=69de0afdde3f2d88240a95e8',
-      hint: 'Займет пару минут',
+      label: copy.incomplete.button,
+      url: links.fillApplication,
+      hint: copy.incomplete.hint,
       closeMiniApp: true,
     },
   };
