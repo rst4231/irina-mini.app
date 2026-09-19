@@ -11,6 +11,31 @@
   "ignoreCommand": "if [ -z \"$VERCEL_GIT_PREVIOUS_SHA\" ]; then exit 1; fi; changed=\"$(git diff --name-only \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD)\"; [ -n \"$changed\" ] || exit 1; printf '%s\\n' \"$changed\" | grep -qv '^runtime-config.json$' && exit 1; exit 0",
   "headers": [
     {
+      "source": "/((?!api/).*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, max-age=0"
+        },
+        {
+          "key": "CDN-Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    },
+    {
       "source": "/(.*)",
       "headers": [
         {
