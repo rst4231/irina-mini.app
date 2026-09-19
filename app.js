@@ -10,6 +10,8 @@ const profile = normalizeTelegramUser(user);
 
 const PROFILE_STORAGE_KEY = 'irina.profile.v2';
 const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
+const APP_VERSION_STORAGE_KEY = 'irina.app-version.v1';
+const APP_VERSION_CHECK_INTERVAL_MS = 60000;
 
 const loadingScreen = document.getElementById('loading-screen');
 const appShell = document.getElementById('app-shell');
@@ -49,7 +51,10 @@ let lastProfileStale = false;
 let previousApplicationTone = null;
 let profileTimer = null;
 let configTimer = null;
+let versionTimer = null;
 let profileLoadInFlight = false;
+let versionCheckInFlight = false;
+let versionReloadScheduled = false;
 let fullscreenRequestedByApp = false;
 
 function hapticImpact(style = 'light') {
@@ -58,6 +63,71 @@ function hapticImpact(style = 'light') {
 
 function hapticSuccess() {
   try { telegram?.HapticFeedback?.notificationOccurred?.('success'); } catch {}
+}
+
+function getStoredAppVersion() {
+  try {
+    return window.localStorage.getItem(APP_VERSION_STORAGE_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+function setStoredAppVersion(version) {
+  try {
+    window.localStorage.setItem(APP_VERSION_STORAGE_KEY, version);
+  } catch {}
+}
+
+function reloadForAppUpdate() {
+  if (versionReloadScheduled) return;
+  versionReloadScheduled = true;
+  clearTimeout(versionTimer);
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('_appv', Date.now().toString(36));
+  window.location.replace(url.toString());
+}
+
+function scheduleVersionCheck() {
+  if (versionReloadScheduled) return;
+  clearTimeout(versionTimer);
+  versionTimer = setTimeout(() => checkAppVersion(), APP_VERSION_CHECK_INTERVAL_MS);
+}
+
+async function checkAppVersion() {
+  if (versionCheckInFlight || versionReloadScheduled) return;
+  versionCheckInFlight = true;
+
+  try {
+    const response = await fetch(`/api/version?_fresh=${Date.now()}`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error(`Version request failed: ${response.status}`);
+
+    const payload = await response.json();
+    const version = typeof payload?.version === 'string' ? payload.version.trim() : '';
+    if (!version) return;
+
+    const previousVersion = getStoredAppVersion();
+    setStoredAppVersion(version);
+
+    if (previousVersion && previousVersion !== version) {
+      reloadForAppUpdate();
+    }
+  } catch {
+    // A failed version check must never block the app.
+  } finally {
+    versionCheckInFlight = false;
+    scheduleVersionCheck();
+  }
+}
+
+function refreshAppState() {
+  checkAppVersion();
+  loadRuntimeConfig({ silent: true });
+  loadSendPulseProfile({ silent: true });
 }
 
 function setApplicationLoading(loading) {
@@ -369,13 +439,17 @@ if (hasTelegramContext) {
   for (const event of ['themeChanged', 'safeAreaChanged', 'contentSafeAreaChanged', 'viewportChanged', 'fullscreenChanged']) {
     telegram.onEvent?.(event, syncTelegramEnvironment);
   }
-  telegram.onEvent?.('activated', () => {
-    loadRuntimeConfig({ silent: true });
-    loadSendPulseProfile({ silent: true });
-  });
+  telegram.onEvent?.('activated', refreshAppState);
 }
 
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) refreshAppState();
+});
+window.addEventListener('focus', refreshAppState);
+window.addEventListener('pageshow', () => checkAppVersion());
+
 async function startApp() {
+  checkAppVersion();
   await loadCachedConfig();
   loadRuntimeConfig({ silent: true });
 
