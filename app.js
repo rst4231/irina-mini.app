@@ -534,8 +534,10 @@ async function loadSendPulseProfile({ silent = false } = {}) {
 
 applicationButton.addEventListener('click', (event) => {
   hapticImpact('medium');
-  setPendingAction(previousApplicationTone);
-  renderApplicationStatus(lastProfileData || {}, { stale: lastProfileStale });
+  if (previousApplicationTone === 'incomplete' || previousApplicationTone === 'approved') {
+    setPendingAction(previousApplicationTone);
+    renderApplicationStatus(lastProfileData || {}, { stale: lastProfileStale });
+  }
   if (applicationButton.dataset.closeMiniApp !== 'true') return;
   if (!hasTelegramContext || typeof telegram?.openTelegramLink !== 'function' || typeof telegram?.close !== 'function') return;
   const url = applicationButton.href;
@@ -591,7 +593,7 @@ document.addEventListener('visibilitychange', () => {
   if (!document.hidden) refreshAppState();
 });
 window.addEventListener('focus', refreshAppState);
-window.addEventListener('pageshow', () => checkAppVersion());
+window.addEventListener('pageshow', refreshAppState);
 
 async function startApp() {
   checkAppVersion();
