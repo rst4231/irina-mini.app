@@ -35,6 +35,13 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   telegram: {
     requestFullscreen: false,
   },
+  ui: {
+    accent: '#347ef4',
+    accentSecondary: '#4a91f8',
+    resourceOrder: ['recruitment', 'about', 'book', 'trustedBy', 'mentor'],
+    showFreshness: true,
+    animations: true,
+  },
   polling: {
     pendingMs: 45000,
     approvedMs: 60000,
@@ -68,6 +75,12 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     outsideDescription: 'Эта страница работает внутри Telegram Mini App.',
     outsideButton: 'Открыть бота',
     staleData: 'Показываем последние данные. Обновим автоматически.',
+    updatedNow: 'Обновлено только что',
+    updatedMinutes: 'Обновлено {n} мин назад',
+    cachedAt: 'Данные от {time}',
+    syncError: 'Не удалось обновить данные',
+    retry: 'Повторить',
+    checkingChanges: 'Проверяем изменения...',
     application: DEFAULT_APPLICATION_COPY,
   },
 });
@@ -85,6 +98,28 @@ function safeText(value, fallback, maxLength = 500) {
 
 function safeBoolean(value, fallback) {
   return typeof value === 'boolean' ? value : fallback;
+}
+
+function safeVersion(value, fallback) {
+  const number = Number(value);
+  if (!Number.isInteger(number) || number < 1 || number > 999999999) return fallback;
+  return number;
+}
+
+function safeColor(value, fallback) {
+  if (typeof value !== 'string') return fallback;
+  const normalized = value.trim();
+  return /^#[0-9a-f]{6}$/i.test(normalized) ? normalized : fallback;
+}
+
+function safeResourceOrder(value, fallback) {
+  if (!Array.isArray(value)) return fallback;
+  const allowed = ['recruitment', 'about', 'book', 'trustedBy', 'mentor'];
+  const unique = value.filter((key, index) => allowed.includes(key) && value.indexOf(key) === index);
+  for (const key of allowed) {
+    if (!unique.includes(key)) unique.push(key);
+  }
+  return unique;
 }
 
 function safeUrl(value, fallback) {
@@ -120,6 +155,8 @@ export function mergeRuntimeConfig(source = {}) {
   const result = cloneDefaults();
   if (!source || typeof source !== 'object' || Array.isArray(source)) return result;
 
+  result.version = safeVersion(source.version, result.version);
+
   if (source.features && typeof source.features === 'object') {
     for (const key of Object.keys(result.features)) {
       result.features[key] = safeBoolean(source.features[key], result.features[key]);
@@ -128,6 +165,14 @@ export function mergeRuntimeConfig(source = {}) {
 
   if (source.telegram && typeof source.telegram === 'object') {
     result.telegram.requestFullscreen = safeBoolean(source.telegram.requestFullscreen, result.telegram.requestFullscreen);
+  }
+
+  if (source.ui && typeof source.ui === 'object') {
+    result.ui.accent = safeColor(source.ui.accent, result.ui.accent);
+    result.ui.accentSecondary = safeColor(source.ui.accentSecondary, result.ui.accentSecondary);
+    result.ui.resourceOrder = safeResourceOrder(source.ui.resourceOrder, result.ui.resourceOrder);
+    result.ui.showFreshness = safeBoolean(source.ui.showFreshness, result.ui.showFreshness);
+    result.ui.animations = safeBoolean(source.ui.animations, result.ui.animations);
   }
 
   if (source.polling && typeof source.polling === 'object') {
@@ -147,7 +192,8 @@ export function mergeRuntimeConfig(source = {}) {
       'recruitmentBadge', 'recruitmentTitle', 'recruitmentSubtitle',
       'aboutTitle', 'aboutSubtitle', 'bookTitle', 'bookSubtitle',
       'mentorTitle', 'mentorSubtitle', 'trustedByTitle', 'outsideTitle', 'outsideDescription',
-      'outsideButton', 'staleData',
+      'outsideButton', 'staleData', 'updatedNow', 'updatedMinutes', 'cachedAt',
+      'syncError', 'retry', 'checkingChanges',
     ]) {
       result.copy[key] = safeText(source.copy[key], result.copy[key]);
     }
