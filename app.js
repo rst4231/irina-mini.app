@@ -12,7 +12,6 @@ const PROFILE_STORAGE_KEY = 'irina.profile.v2';
 const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
 const APP_VERSION_STORAGE_KEY = 'irina.app-version.v1';
 const PENDING_ACTION_STORAGE_KEY = 'irina.pending-action.v1';
-const ADMIN_TELEGRAM_ID = '160628165';
 const APP_VERSION_CHECK_INTERVAL_MS = 60000;
 const REFRESH_COOLDOWN_MS = 1200;
 const PENDING_ACTION_MAX_AGE_MS = 10 * 60 * 1000;
@@ -46,7 +45,6 @@ const mentorButton = document.getElementById('mentor-button');
 const footerYear = document.getElementById('footer-year');
 const footerChannel = document.getElementById('footer-channel');
 const appVersion = document.getElementById('app-version');
-const adminLink = document.getElementById('admin-link');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 const APPLICATION_ICONS = {
@@ -547,7 +545,7 @@ applicationButton.addEventListener('click', (event) => {
   setTimeout(() => telegram.close(), 120);
 });
 
-document.querySelectorAll('.resource-button, .footer-telegram-icon, .admin-link').forEach((element) => {
+document.querySelectorAll('.resource-button, .footer-telegram-icon').forEach((element) => {
   element.addEventListener('click', () => hapticImpact('light'));
 });
 
@@ -561,7 +559,6 @@ name.textContent = profile.name;
 date.textContent = formatRussianDayMonth();
 initial.textContent = profile.initial;
 footerYear.textContent = new Date().getFullYear();
-if (adminLink) adminLink.hidden = String(user?.id || '') !== ADMIN_TELEGRAM_ID;
 scheduleFreshnessTick();
 
 if (profile.username) {

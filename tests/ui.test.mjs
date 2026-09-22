@@ -25,19 +25,11 @@ test('app uses Telegram haptics and does not enforce the old 1.5 second delay', 
   assert.doesNotMatch(source, /wait\(1500\)|minimumDelay/);
 });
 
-test('includes skeleton, freshness, retry, admin link and release label', async () => {
+test('includes skeleton, freshness, retry and release label', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  for (const id of ['loading-screen','freshness-indicator','sync-error','sync-retry-button','admin-link','app-version']) {
+  for (const id of ['loading-screen','freshness-indicator','sync-error','sync-retry-button','app-version']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /class="loading-skeleton"/);
-  assert.match(html, />v\.03</);
+  assert.match(html, />v\.04</);
 });
-
-test('admin page loads Telegram protected editor assets', async () => {
-  const html = await readFile(new URL('../admin.html', import.meta.url), 'utf8');
-  assert.match(html, /telegram\.org\/js\/telegram-web-app\.js/);
-  assert.match(html, /admin\.js/);
-  assert.match(html, /admin\.css/);
-});
-
