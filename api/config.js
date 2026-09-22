@@ -1,4 +1,5 @@
 import { DEFAULT_RUNTIME_CONFIG, mergeRuntimeConfig } from '../runtime-config.js';
+import { loadStoredRuntimeConfig } from '../sendpulse-config.js';
 
 export const RUNTIME_CONFIG_URL = process.env.RUNTIME_CONFIG_URL
   || 'https://raw.githubusercontent.com/rst4231/irina-mini.app/main/runtime-config.json';
@@ -14,6 +15,8 @@ function getFreshRuntimeConfigUrl() {
 }
 
 export async function loadRuntimeConfig(fetchImpl = fetch) {
+  let baseConfig = mergeRuntimeConfig();
+
   try {
     const response = await fetchImpl(getFreshRuntimeConfigUrl(), {
       headers: {
@@ -23,11 +26,21 @@ export async function loadRuntimeConfig(fetchImpl = fetch) {
       },
       cache: 'no-store',
     });
-    if (!response?.ok) return mergeRuntimeConfig();
-    const payload = await response.json();
-    return mergeRuntimeConfig(payload);
-  } catch {
-    return mergeRuntimeConfig();
+    if (response?.ok) {
+      const payload = await response.json();
+      baseConfig = mergeRuntimeConfig(payload);
+    }
+  } catch {}
+
+  const sendPulseApiKey = process.env.SENDPULSE_API_KEY;
+  if (!sendPulseApiKey) return baseConfig;
+
+  try {
+    const storedConfig = await loadStoredRuntimeConfig(sendPulseApiKey);
+    return storedConfig ? mergeRuntimeConfig(storedConfig) : baseConfig;
+  } catch (error) {
+    console.error('runtime_config_storage_error', error?.message || error);
+    return baseConfig;
   }
 }
 
