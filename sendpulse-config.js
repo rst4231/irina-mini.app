@@ -104,7 +104,7 @@ export function parseConfigChunk(note) {
   };
 }
 
-export function findLatestChunkedConfig(notes = []) {
+function collectChunkGroups(notes = []) {
   const groups = new Map();
 
   for (const note of notes) {
@@ -119,22 +119,40 @@ export function findLatestChunkedConfig(notes = []) {
     group.notes.push(note);
   }
 
-  const complete = [...groups.values()]
-    .filter((group) => group.parts.size === group.total && Array.from({ length: group.total }, (_, i) => group.parts.has(i + 1)))
+  return groups;
+}
+
+function decodeChunkGroup(group) {
+  if (!group) return null;
+  if (group.parts.size !== group.total) return null;
+  if (!Array.from({ length: group.total }, (_, i) => group.parts.has(i + 1)).every(Boolean)) return null;
+
+  try {
+    const serialized = Array.from({ length: group.total }, (_, i) => group.parts.get(i + 1)).join('');
+    const config = JSON.parse(serialized);
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return null;
+    return { config, group };
+  } catch {
+    return null;
+  }
+}
+
+export function findChunkedConfigByStorageId(notes = [], storageId) {
+  return decodeChunkGroup(collectChunkGroups(notes).get(String(storageId)));
+}
+
+export function findLatestChunkedConfig(notes = []) {
+  const complete = [...collectChunkGroups(notes).values()]
+    .map(decodeChunkGroup)
+    .filter(Boolean)
     .sort((a, b) => {
-      const numeric = Number(b.storageId) - Number(a.storageId);
-      return Number.isFinite(numeric) && numeric !== 0 ? numeric : b.storageId.localeCompare(a.storageId);
+      const numeric = Number(b.group.storageId) - Number(a.group.storageId);
+      return Number.isFinite(numeric) && numeric !== 0
+        ? numeric
+        : b.group.storageId.localeCompare(a.group.storageId);
     });
 
-  for (const group of complete) {
-    try {
-      const serialized = Array.from({ length: group.total }, (_, i) => group.parts.get(i + 1)).join('');
-      const config = JSON.parse(serialized);
-      if (config && typeof config === 'object' && !Array.isArray(config)) return { config, group };
-    } catch {}
-  }
-
-  return null;
+  return complete[0] || null;
 }
 
 async function createNote(contactId, text, apiKey) {
@@ -180,18 +198,15 @@ export async function saveStoredRuntimeConfig(config, apiKey) {
   const existingNotes = await getConfigNotes(contact.id, apiKey);
   const storageId = String(Date.now());
   const texts = encodeConfigChunks(config, storageId);
-  const createdIds = [];
 
-  try {
-    for (const text of texts) {
-      const payload = await createNote(contact.id, text, apiKey);
-      const noteId = String(payload?.id ?? payload?.data?.id ?? '');
-      if (!noteId) throw new Error('sendpulse_note_id_missing');
-      createdIds.push(noteId);
-    }
-  } catch (error) {
-    await Promise.all(createdIds.map((noteId) => deleteNote(contact.id, noteId, apiKey)));
-    throw error;
+  for (const text of texts) {
+    await createNote(contact.id, text, apiKey);
+  }
+
+  const savedNotes = await getConfigNotes(contact.id, apiKey);
+  const saved = findChunkedConfigByStorageId(savedNotes, storageId);
+  if (!saved?.config || JSON.stringify(saved.config) !== JSON.stringify(config)) {
+    throw new Error('sendpulse_config_verification_failed');
   }
 
   const oldConfigNotes = existingNotes.filter((note) => {
@@ -201,10 +216,12 @@ export async function saveStoredRuntimeConfig(config, apiKey) {
   await Promise.all(oldConfigNotes.map((note) => deleteNote(contact.id, note?.id, apiKey)));
 
   return {
-    noteId: createdIds[0] || null,
-    noteIds: createdIds,
+    noteId: saved.group.notes[0]?.id ? String(saved.group.notes[0].id) : null,
+    noteIds: saved.group.notes.map((note) => String(note?.id || '')).filter(Boolean),
     created: true,
+    verified: true,
     chunks: texts.length,
+    storageId,
   };
 }
 
