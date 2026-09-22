@@ -7,6 +7,7 @@ import {
   CONFIG_NOTE_PREFIX,
   LEGACY_CONFIG_NOTE_PREFIX,
   encodeConfigChunks,
+  findChunkedConfigByStorageId,
   findLatestChunkedConfig,
   findLatestConfigNote,
   parseConfigChunk,
@@ -14,8 +15,8 @@ import {
 } from '../sendpulse-config.js';
 import { isAdminTelegramUser, nextConfigVersion } from '../api/admin-config.js';
 
-test('increments public app release to v.02 for the admin storage fix', () => {
-  assert.equal(APP_RELEASE, 'v.02');
+test('increments public app release to v.03 for verified admin persistence', () => {
+  assert.equal(APP_RELEASE, 'v.03');
 });
 
 test('runtime config merges version, colors and resource order safely', () => {
@@ -97,6 +98,9 @@ test('large runtime config is split into short SendPulse notes and reconstructed
 
   const reconstructed = findLatestChunkedConfig(notes);
   assert.deepEqual(reconstructed?.config, config);
+  const exact = findChunkedConfigByStorageId(notes, '1790065000000');
+  assert.deepEqual(exact?.config, config);
+  assert.equal(findChunkedConfigByStorageId(notes, 'missing'), null);
 });
 
 test('admin access is limited to the configured Telegram ID', () => {
