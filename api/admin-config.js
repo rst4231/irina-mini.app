@@ -23,7 +23,10 @@ function authorize(req) {
   if (!botToken) return { ok: false, status: 503, error: 'service_not_configured' };
 
   const body = parseBody(req.body);
-  const initData = typeof body.initData === 'string' ? body.initData : '';
+  const headerInitData = typeof req.headers?.['x-telegram-init-data'] === 'string'
+    ? req.headers['x-telegram-init-data']
+    : '';
+  const initData = typeof body.initData === 'string' && body.initData ? body.initData : headerInitData;
   if (!initData) return { ok: false, status: 401, error: 'missing_init_data' };
 
   const user = validateInitData(initData, botToken);
