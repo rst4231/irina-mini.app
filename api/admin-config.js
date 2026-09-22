@@ -18,6 +18,10 @@ function parseBody(body) {
   try { return JSON.parse(body); } catch { return {}; }
 }
 
+export function isAdminTelegramUser(user) {
+  return String(user?.id || '') === ADMIN_TELEGRAM_ID;
+}
+
 function authorize(req) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) return { ok: false, status: 503, error: 'service_not_configured' };
@@ -31,7 +35,7 @@ function authorize(req) {
 
   const user = validateInitData(initData, botToken);
   if (!user?.id) return { ok: false, status: 401, error: 'invalid_or_stale_init_data' };
-  if (String(user.id) !== ADMIN_TELEGRAM_ID) return { ok: false, status: 403, error: 'forbidden' };
+  if (!isAdminTelegramUser(user)) return { ok: false, status: 403, error: 'forbidden' };
 
   return { ok: true, body, user };
 }
