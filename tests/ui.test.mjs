@@ -31,7 +31,7 @@ test('includes skeleton, freshness, retry, admin link and release label', async 
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /class="loading-skeleton"/);
-  assert.match(html, />v\.01</);
+  assert.match(html, />v\.02</);
 });
 
 test('admin page loads Telegram protected editor assets', async () => {
