@@ -20,6 +20,7 @@ const FIELD_GROUPS = [
       ['ui.accentSecondary', 'Второй цвет', 'color'],
       ['ui.showFreshness', 'Показывать актуальность данных', 'boolean'],
       ['ui.animations', 'Плавные анимации статусов', 'boolean'],
+      ['telegram.requestFullscreen', 'Полноэкранный режим Telegram', 'boolean'],
     ],
   },
   {
