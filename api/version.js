@@ -1,3 +1,5 @@
+import { APP_RELEASE } from '../release.js';
+
 function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -27,5 +29,6 @@ export default function handler(req, res) {
   return sendJson(res, 200, {
     ok: true,
     version: getDeploymentVersion(),
+    release: APP_RELEASE,
   });
 }

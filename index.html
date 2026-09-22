@@ -10,9 +10,27 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
-    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite">
-      <div class="loading-spinner" aria-hidden="true"></div>
-      <div class="loading-text">Загрузка данных...</div>
+    <div id="loading-screen" class="loading-screen" role="status" aria-live="polite" aria-label="Загрузка приложения">
+      <div class="loading-skeleton" aria-hidden="true">
+        <div class="skeleton-profile">
+          <span class="skeleton-circle"></span>
+          <span class="skeleton-profile-lines">
+            <span class="skeleton-line skeleton-line-title"></span>
+            <span class="skeleton-line skeleton-line-short"></span>
+            <span class="skeleton-line skeleton-line-date"></span>
+          </span>
+        </div>
+        <div class="skeleton-card">
+          <span class="skeleton-icon"></span>
+          <span class="skeleton-card-lines">
+            <span class="skeleton-line skeleton-line-title"></span>
+            <span class="skeleton-line"></span>
+          </span>
+        </div>
+        <div class="skeleton-resource"></div>
+        <div class="skeleton-resource"></div>
+        <div class="skeleton-resource"></div>
+      </div>
     </div>
 
     <section id="outside-telegram-screen" class="outside-telegram-screen" aria-label="Открыть в Telegram" hidden>
@@ -64,9 +82,16 @@
           <div id="application-sync-hint" class="application-sync-hint" hidden></div>
         </section>
 
+        <div id="freshness-indicator" class="freshness-indicator" aria-live="polite" hidden></div>
+        <div id="sync-error" class="sync-error" role="status" aria-live="polite" hidden>
+          <span id="sync-error-text">Не удалось обновить данные</span>
+          <button id="sync-retry-button" class="sync-retry-button" type="button">Повторить</button>
+        </div>
+
         <nav class="resource-buttons" aria-label="Полезные ссылки">
           <a
             id="join-team-button"
+            data-resource-key="recruitment"
             class="resource-button"
             aria-label="Подробнее о наборе"
             href="https://buildin.ai/arbstart/share/f6663f42-2600-4657-8eea-619aa19f7cd1?code=FH21BF"
@@ -88,6 +113,7 @@
 
           <a
             id="about-button"
+            data-resource-key="about"
             class="resource-button"
             aria-label="О команде, кейсы, отзывы"
             href="https://buildin.ai/arbstart/share/cb16c32d-8205-455c-bb89-ac9ad98534df?code=FH21BF"
@@ -108,6 +134,7 @@
 
           <a
             id="book-button"
+            data-resource-key="book"
             class="resource-button"
             aria-label="Как лить в плюс. Арбитраж трафика"
             href="https://app.lava.top/products/1a995492-be5d-4957-8dfb-29bb21d7f387"
@@ -128,6 +155,7 @@
 
           <section
             id="trusted-by"
+            data-resource-key="trustedBy"
             class="trusted-by"
             aria-label="Нам доверяют и о нас говорят: Keitaro, Conversion, Партнеркин, M1.TOP, NUTRA.CLUB"
           >
@@ -143,6 +171,7 @@
 
           <a
             id="mentor-button"
+            data-resource-key="mentor"
             class="resource-button resource-button-mentor"
             aria-label="Перейти к наставнику"
             href="https://t.me/teachercpa_bot"
@@ -164,7 +193,11 @@
         </nav>
 
         <footer class="app-footer">
-          <span>© 2018–<span id="footer-year"></span></span>
+          <div class="footer-meta">
+            <span>© 2018–<span id="footer-year"></span></span>
+            <span id="app-version" class="app-version">v.01</span>
+            <a id="admin-link" class="admin-link" href="/admin" hidden>Админка</a>
+          </div>
           <a
             id="footer-channel"
             class="footer-telegram-icon"
