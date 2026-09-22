@@ -11,7 +11,11 @@ const profile = normalizeTelegramUser(user);
 const PROFILE_STORAGE_KEY = 'irina.profile.v2';
 const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
 const APP_VERSION_STORAGE_KEY = 'irina.app-version.v1';
+const PENDING_ACTION_STORAGE_KEY = 'irina.pending-action.v1';
+const ADMIN_TELEGRAM_ID = '160628165';
 const APP_VERSION_CHECK_INTERVAL_MS = 60000;
+const REFRESH_COOLDOWN_MS = 1200;
+const PENDING_ACTION_MAX_AGE_MS = 10 * 60 * 1000;
 
 const loadingScreen = document.getElementById('loading-screen');
 const appShell = document.getElementById('app-shell');
@@ -29,6 +33,11 @@ const applicationDescription = document.getElementById('application-description'
 const applicationButton = document.getElementById('application-button');
 const applicationHint = document.getElementById('application-hint');
 const applicationSyncHint = document.getElementById('application-sync-hint');
+const freshnessIndicator = document.getElementById('freshness-indicator');
+const syncError = document.getElementById('sync-error');
+const syncErrorText = document.getElementById('sync-error-text');
+const syncRetryButton = document.getElementById('sync-retry-button');
+const resourceButtons = document.querySelector('.resource-buttons');
 const joinTeamButton = document.getElementById('join-team-button');
 const aboutButton = document.getElementById('about-button');
 const bookButton = document.getElementById('book-button');
@@ -36,6 +45,8 @@ const trustedByBlock = document.getElementById('trusted-by');
 const mentorButton = document.getElementById('mentor-button');
 const footerYear = document.getElementById('footer-year');
 const footerChannel = document.getElementById('footer-channel');
+const appVersion = document.getElementById('app-version');
+const adminLink = document.getElementById('admin-link');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
 const APPLICATION_ICONS = {
@@ -48,14 +59,19 @@ const APPLICATION_ICONS = {
 let runtimeConfig = mergeRuntimeConfig(DEFAULT_RUNTIME_CONFIG);
 let lastProfileData = null;
 let lastProfileStale = false;
+let lastProfileSavedAt = 0;
 let previousApplicationTone = null;
 let profileTimer = null;
 let configTimer = null;
 let versionTimer = null;
+let freshnessTimer = null;
 let profileLoadInFlight = false;
+let configLoadInFlight = false;
 let versionCheckInFlight = false;
 let versionReloadScheduled = false;
 let fullscreenRequestedByApp = false;
+let lastRefreshRequestAt = 0;
+let pendingRefreshTimers = [];
 
 function hapticImpact(style = 'light') {
   try { telegram?.HapticFeedback?.impactOccurred?.(style); } catch {}
@@ -107,6 +123,9 @@ async function checkAppVersion() {
     if (!response.ok) throw new Error(`Version request failed: ${response.status}`);
 
     const payload = await response.json();
+    const release = typeof payload?.release === 'string' ? payload.release.trim() : '';
+    if (release && appVersion) appVersion.textContent = release;
+
     const version = typeof payload?.version === 'string' ? payload.version.trim() : '';
     if (!version) return;
 
@@ -124,10 +143,101 @@ async function checkAppVersion() {
   }
 }
 
-function refreshAppState() {
+function getPendingAction() {
+  try {
+    const raw = window.localStorage.getItem(PENDING_ACTION_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const createdAt = Number(parsed?.createdAt || 0);
+    if (!createdAt || Date.now() - createdAt > PENDING_ACTION_MAX_AGE_MS) {
+      window.localStorage.removeItem(PENDING_ACTION_STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function setPendingAction(tone) {
+  try {
+    window.localStorage.setItem(PENDING_ACTION_STORAGE_KEY, JSON.stringify({
+      tone: tone || '',
+      createdAt: Date.now(),
+    }));
+  } catch {}
+}
+
+function clearPendingAction() {
+  try { window.localStorage.removeItem(PENDING_ACTION_STORAGE_KEY); } catch {}
+  for (const timer of pendingRefreshTimers) clearTimeout(timer);
+  pendingRefreshTimers = [];
+}
+
+function queuePendingActionRefreshes() {
+  if (!getPendingAction() || !hasTelegramContext) return;
+  for (const timer of pendingRefreshTimers) clearTimeout(timer);
+  pendingRefreshTimers = [2500, 7000, 15000, 30000].map((delay) => (
+    setTimeout(() => loadSendPulseProfile({ silent: true }), delay)
+  ));
+}
+
+function showSyncError(show) {
+  if (!syncError) return;
+  syncError.hidden = !show;
+  if (show && syncErrorText) syncErrorText.textContent = runtimeConfig.copy.syncError;
+  if (syncRetryButton) syncRetryButton.textContent = runtimeConfig.copy.retry;
+}
+
+function formatFreshnessText() {
+  if (!lastProfileSavedAt || !runtimeConfig.ui.showFreshness) return '';
+  const ageMinutes = Math.max(0, Math.floor((Date.now() - lastProfileSavedAt) / 60000));
+  if (lastProfileStale) {
+    const time = new Date(lastProfileSavedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return runtimeConfig.copy.cachedAt.replace('{time}', time);
+  }
+  if (ageMinutes < 1) return runtimeConfig.copy.updatedNow;
+  return runtimeConfig.copy.updatedMinutes.replace('{n}', String(ageMinutes));
+}
+
+function renderFreshness() {
+  if (!freshnessIndicator) return;
+  const text = formatFreshnessText();
+  freshnessIndicator.textContent = text;
+  freshnessIndicator.hidden = !text;
+}
+
+function scheduleFreshnessTick() {
+  clearTimeout(freshnessTimer);
+  freshnessTimer = setTimeout(() => {
+    renderFreshness();
+    scheduleFreshnessTick();
+  }, 30000);
+}
+
+function refreshAppState({ force = false } = {}) {
+  const now = Date.now();
+  if (!force && now - lastRefreshRequestAt < REFRESH_COOLDOWN_MS) return;
+  lastRefreshRequestAt = now;
   checkAppVersion();
   loadRuntimeConfig({ silent: true });
   loadSendPulseProfile({ silent: true });
+  queuePendingActionRefreshes();
+}
+
+function reorderResources() {
+  if (!resourceButtons) return;
+  const nodes = {
+    recruitment: joinTeamButton,
+    about: aboutButton,
+    book: bookButton,
+    trustedBy: trustedByBlock,
+    mentor: mentorButton,
+  };
+  for (const key of runtimeConfig.ui.resourceOrder) {
+    const node = nodes[key];
+    if (node) resourceButtons.appendChild(node);
+  }
 }
 
 function setApplicationLoading(loading) {
@@ -209,6 +319,9 @@ function renderVisibility() {
 
 function applyRuntimeConfig(config) {
   runtimeConfig = mergeRuntimeConfig(config);
+  document.documentElement.style.setProperty('--app-accent', runtimeConfig.ui.accent);
+  document.documentElement.style.setProperty('--app-accent-2', runtimeConfig.ui.accentSecondary);
+  reorderResources();
 
   setResourceContent(joinTeamButton, {
     title: runtimeConfig.copy.recruitmentTitle,
@@ -248,6 +361,8 @@ function applyRuntimeConfig(config) {
 
   renderVisibility();
   if (lastProfileData && !lastProfileData.hasPaymentTag) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
+  renderFreshness();
+  showSyncError(!syncError?.hidden);
   maybeSyncFullscreen();
   scheduleProfileRefresh();
   scheduleConfigRefresh();
@@ -268,8 +383,17 @@ function renderApplicationStatus(data, { stale = false } = {}) {
   applicationStatus.textContent = state.status;
   applicationDescription.textContent = state.description;
 
-  if (previousApplicationTone && previousApplicationTone !== state.tone) {
+  const toneChanged = Boolean(previousApplicationTone && previousApplicationTone !== state.tone);
+  if (toneChanged) {
     if (state.tone === 'approved' || state.tone === 'terms') hapticSuccess();
+    const pending = getPendingAction();
+    if (pending && (!pending.tone || pending.tone !== state.tone)) clearPendingAction();
+    if (runtimeConfig.ui.animations) {
+      applicationCard.classList.remove('status-changed');
+      void applicationCard.offsetWidth;
+      applicationCard.classList.add('status-changed');
+      setTimeout(() => applicationCard.classList.remove('status-changed'), 500);
+    }
   }
   previousApplicationTone = state.tone;
 
@@ -298,18 +422,22 @@ function renderApplicationStatus(data, { stale = false } = {}) {
     applicationButton.removeAttribute('data-close-mini-app');
   }
 
-  applicationSyncHint.textContent = stale ? runtimeConfig.copy.staleData : '';
-  applicationSyncHint.hidden = !stale;
+  const pending = getPendingAction();
+  const syncText = pending ? runtimeConfig.copy.checkingChanges : (stale ? runtimeConfig.copy.staleData : '');
+  applicationSyncHint.textContent = syncText;
+  applicationSyncHint.hidden = !syncText;
 }
 
-function renderProfileData(data, { stale = false } = {}) {
+function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   lastProfileData = data;
   lastProfileStale = stale;
+  lastProfileSavedAt = Number(savedAt) || Date.now();
   const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
   name.textContent = sendPulseName || profile.name;
   renderVisibility();
   if (!data?.hasPaymentTag) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);
+  renderFreshness();
 }
 
 async function loadCachedConfig() {
@@ -318,6 +446,8 @@ async function loadCachedConfig() {
 }
 
 async function loadRuntimeConfig({ silent = false } = {}) {
+  if (configLoadInFlight) return;
+  configLoadInFlight = true;
   try {
     const response = await fetch('/api/config', { headers: { Accept: 'application/json' }, cache: 'no-store' });
     if (!response.ok) throw new Error(`Config request failed: ${response.status}`);
@@ -331,6 +461,7 @@ async function loadRuntimeConfig({ silent = false } = {}) {
       if (cached?.config) applyRuntimeConfig(cached.config);
     }
   } finally {
+    configLoadInFlight = false;
     scheduleConfigRefresh();
   }
 }
@@ -369,16 +500,19 @@ async function loadSendPulseProfile({ silent = false } = {}) {
     });
     if (!response.ok) throw new Error(`Profile request failed: ${response.status}`);
     const data = await response.json();
-    renderProfileData(data, { stale: false });
+    const savedAt = Date.now();
+    showSyncError(false);
+    renderProfileData(data, { stale: false, savedAt });
     await setStoredJson(telegram, PROFILE_STORAGE_KEY, {
       telegramId: String(user?.id || ''),
       data,
-      savedAt: Date.now(),
+      savedAt,
     });
   } catch {
+    showSyncError(true);
     const cached = await getCachedProfile();
     if (cached?.data) {
-      renderProfileData(cached.data, { stale: true });
+      renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
     } else if (!silent) {
       setApplicationLoading(false);
       applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms');
@@ -389,6 +523,7 @@ async function loadSendPulseProfile({ silent = false } = {}) {
       applicationButton.hidden = true;
       applicationHint.hidden = true;
       applicationSyncHint.hidden = true;
+      renderFreshness();
     }
   } finally {
     clearTimeout(timeout);
@@ -399,6 +534,8 @@ async function loadSendPulseProfile({ silent = false } = {}) {
 
 applicationButton.addEventListener('click', (event) => {
   hapticImpact('medium');
+  setPendingAction(previousApplicationTone);
+  renderApplicationStatus(lastProfileData || {}, { stale: lastProfileStale });
   if (applicationButton.dataset.closeMiniApp !== 'true') return;
   if (!hasTelegramContext || typeof telegram?.openTelegramLink !== 'function' || typeof telegram?.close !== 'function') return;
   const url = applicationButton.href;
@@ -408,14 +545,22 @@ applicationButton.addEventListener('click', (event) => {
   setTimeout(() => telegram.close(), 120);
 });
 
-document.querySelectorAll('.resource-button, .footer-telegram-icon').forEach((element) => {
+document.querySelectorAll('.resource-button, .footer-telegram-icon, .admin-link').forEach((element) => {
   element.addEventListener('click', () => hapticImpact('light'));
+});
+
+syncRetryButton?.addEventListener('click', () => {
+  hapticImpact('light');
+  showSyncError(false);
+  refreshAppState({ force: true });
 });
 
 name.textContent = profile.name;
 date.textContent = formatRussianDayMonth();
 initial.textContent = profile.initial;
 footerYear.textContent = new Date().getFullYear();
+if (adminLink) adminLink.hidden = String(user?.id || '') !== ADMIN_TELEGRAM_ID;
+scheduleFreshnessTick();
 
 if (profile.username) {
   username.textContent = profile.username;
@@ -461,11 +606,16 @@ async function startApp() {
   }
 
   const cached = await getCachedProfile();
-  if (cached?.data) renderProfileData(cached.data, { stale: true });
-
-  loadingScreen.hidden = true;
-  appShell.hidden = false;
-  await loadSendPulseProfile({ silent: Boolean(cached?.data) });
+  if (cached?.data) {
+    renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
+    loadingScreen.hidden = true;
+    appShell.hidden = false;
+    loadSendPulseProfile({ silent: true });
+  } else {
+    await loadSendPulseProfile({ silent: false });
+    loadingScreen.hidden = true;
+    appShell.hidden = false;
+  }
 }
 
 startApp();
