@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { APP_RELEASE } from '../release.js';
 import { mergeRuntimeConfig } from '../runtime-config.js';
 import { CONFIG_NOTE_PREFIX, findLatestConfigNote, parseConfigNote } from '../sendpulse-config.js';
-import { nextConfigVersion } from '../api/admin-config.js';
+import { isAdminTelegramUser, nextConfigVersion } from '../api/admin-config.js';
 
 test('starts public app release numbering at v.01', () => {
   assert.equal(APP_RELEASE, 'v.01');
@@ -57,4 +57,10 @@ test('SendPulse config note parser reads only prefixed JSON and picks latest not
   assert.equal(findLatestConfigNote([older, unrelated, newer])?.id, '2');
   assert.deepEqual(parseConfigNote(newer), { version: 3, ui: { accent: '#112233' } });
   assert.equal(parseConfigNote(unrelated), null);
+});
+
+test('admin access is limited to the configured Telegram ID', () => {
+  assert.equal(isAdminTelegramUser({ id: 160628165 }), true);
+  assert.equal(isAdminTelegramUser({ id: 160628166 }), false);
+  assert.equal(isAdminTelegramUser(null), false);
 });
