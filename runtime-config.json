@@ -16,7 +16,7 @@
     "approvedMs": 60000,
     "idleMs": 300000,
     "finalMs": 900000,
-    "configMs": 120000
+    "configMs": 60000
   },
   "links": {
     "fillApplication": "https://t.me/rstshelp_bot?start=69de0afdde3f2d88240a95e8",
@@ -66,6 +66,25 @@
         "description": "Условия готовы. Посмотрите детали участия",
         "button": "Посмотреть условия"
       }
-    }
+    },
+    "updatedNow": "Обновлено только что",
+    "updatedMinutes": "Обновлено {n} мин назад",
+    "cachedAt": "Данные от {time}",
+    "syncError": "Не удалось обновить данные",
+    "retry": "Повторить",
+    "checkingChanges": "Проверяем изменения..."
+  },
+  "ui": {
+    "accent": "#347ef4",
+    "accentSecondary": "#4a91f8",
+    "resourceOrder": [
+      "recruitment",
+      "about",
+      "book",
+      "trustedBy",
+      "mentor"
+    ],
+    "showFreshness": true,
+    "animations": true
   }
 }
