@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { APP_RELEASE } from '../release.js';
 import { mergeRuntimeConfig } from '../runtime-config.js';
 
-test('release is v.04 after removing admin', () => {
-  assert.equal(APP_RELEASE, 'v.04');
+test('internal release is v.05', () => {
+  assert.equal(APP_RELEASE, 'v.05');
 });
 
 test('runtime config still supports feature switches and UI settings', () => {
