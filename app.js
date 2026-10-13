@@ -1,4 +1,4 @@
-import { formatRussianDayMonth, normalizeTelegramUser } from './profile.js';
+import { normalizeTelegramUser } from './profile.js';
 import { getApplicationViewState } from './application.js';
 import { DEFAULT_RUNTIME_CONFIG, getProfilePollInterval, mergeRuntimeConfig } from './runtime-config.js';
 import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './telegram-runtime.js';
@@ -7,6 +7,11 @@ const telegram = window.Telegram?.WebApp;
 const hasTelegramContext = Boolean(telegram?.initData);
 const user = telegram?.initDataUnsafe?.user;
 const profile = normalizeTelegramUser(user);
+
+function getGreetingName(sendPulseName = '') {
+  const preferredName = sendPulseName || String(user?.first_name || '').trim() || profile.name;
+  return preferredName.trim().split(/\s+/)[0] || 'Пользователь';
+}
 
 const PROFILE_STORAGE_KEY = 'irina.profile.v2';
 const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
@@ -24,7 +29,6 @@ const avatar = document.getElementById('profile-avatar');
 const initial = document.getElementById('profile-initial');
 const name = document.getElementById('profile-name');
 const username = document.getElementById('profile-username');
-const date = document.getElementById('profile-date');
 const applicationCard = document.getElementById('application-card');
 const applicationIcon = document.querySelector('.application-icon');
 const applicationStatus = document.getElementById('application-status');
@@ -406,8 +410,9 @@ function renderApplicationStatus(data, { stale = false } = {}) {
     applicationButton.href = state.action.url;
     applicationButton.target = state.action.target || '_self';
     applicationButton.dataset.closeMiniApp = state.action.closeMiniApp ? 'true' : 'false';
-    applicationHint.textContent = state.action.hint || '';
-    applicationHint.hidden = !state.action.hint;
+    const actionHint = state.tone === 'approved' ? '' : (state.action.hint || '');
+    applicationHint.textContent = actionHint;
+    applicationHint.hidden = !actionHint;
     if (state.action.target === '_blank') applicationButton.rel = 'noopener noreferrer';
     else applicationButton.removeAttribute('rel');
     applicationButton.hidden = false;
@@ -431,7 +436,7 @@ function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   lastProfileStale = stale;
   lastProfileSavedAt = Number(savedAt) || Date.now();
   const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
-  name.textContent = sendPulseName || profile.name;
+  name.textContent = `Привет, ${getGreetingName(sendPulseName)}!`;
   renderVisibility();
   if (!data?.hasPaymentTag) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);
@@ -555,8 +560,7 @@ syncRetryButton?.addEventListener('click', () => {
   refreshAppState({ force: true });
 });
 
-name.textContent = profile.name;
-date.textContent = formatRussianDayMonth();
+name.textContent = `Привет, ${getGreetingName()}!`;
 initial.textContent = profile.initial;
 footerYear.textContent = new Date().getFullYear();
 scheduleFreshnessTick();

@@ -41,3 +41,18 @@ test('loads the inline recruitment viewer and keeps the HTTPS recruitment link',
   assert.match(html, /recruitment-viewer\.js/);
   assert.match(html, /id="join-team-button"[\s\S]*?target="_self"/);
 });
+
+test('profile greets the user by first name without a date', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(html, /Привет, Пользователь!/);
+  assert.doesNotMatch(html, /id="profile-date"|class="profile-date-row"|skeleton-line-date/);
+  assert.match(source, /getGreetingName\(sendPulseName\)/);
+  assert.doesNotMatch(source, /date\.textContent|formatRussianDayMonth/);
+});
+
+test('approved application no longer displays action timing hint', async () => {
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(source, /state\.tone === 'approved' \? ''/);
+  assert.match(source, /applicationHint\.hidden = !actionHint/);
+});
