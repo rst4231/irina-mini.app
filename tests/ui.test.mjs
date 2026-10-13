@@ -25,11 +25,19 @@ test('app uses Telegram haptics and does not enforce the old 1.5 second delay', 
   assert.doesNotMatch(source, /wait\(1500\)|minimumDelay/);
 });
 
-test('includes skeleton, freshness, retry and release label', async () => {
+test('includes skeleton, freshness and retry without a visible release label', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-  for (const id of ['loading-screen','freshness-indicator','sync-error','sync-retry-button','app-version']) {
+  for (const id of ['loading-screen','freshness-indicator','sync-error','sync-retry-button']) {
     assert.match(html, new RegExp(`id="${id}"`));
   }
   assert.match(html, /class="loading-skeleton"/);
-  assert.match(html, />v\.04</);
+  assert.doesNotMatch(html, /id="app-version"/);
+  assert.doesNotMatch(html, />v\.04</);
+});
+
+test('loads the inline recruitment viewer and keeps the HTTPS recruitment link', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  assert.match(html, /href="https:\/\/team\.arbstart\.tech"/);
+  assert.match(html, /recruitment-viewer\.js/);
+  assert.match(html, /id="join-team-button"[\s\S]*?target="_self"/);
 });
