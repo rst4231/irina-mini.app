@@ -2,7 +2,7 @@
   "version": 1,
   "features": {
     "recruitment": true,
-    "about": true,
+    "about": false,
     "book": true,
     "trustedBy": true,
     "channel": true,
