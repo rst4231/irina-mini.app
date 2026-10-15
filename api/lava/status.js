@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   if (!UUID.test(invoiceId)) return res.status(400).json({ok:false,error:'invalid_invoice'});
   if (!process.env.LAVA_TOP_API_KEY) return res.status(503).json({ok:false,error:'not_configured'});
   try {
-    const response = await fetch('https://gate.lava.top/api/v2/invoices/' + encodeURIComponent(invoiceId), {
+    const response = await fetch('https://gate.lava.top/api/v1/invoices/' + encodeURIComponent(invoiceId), {
       headers: { 'X-Api-Key': process.env.LAVA_TOP_API_KEY, Accept: 'application/json' },
       signal: AbortSignal.timeout(8500),
       cache: 'no-store',
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     const record = data?.data ?? data?.result ?? data;
     const status = String(record?.status ?? record?.paymentStatus ?? '').toLowerCase();
-    const paid = ['completed','success','successful','paid','succeeded'].includes(status);
+    const paid = ['completed','success','successful','paid','succeeded','payment.success'].includes(status);
     return res.status(200).json({ok:true,paid,pending:!paid});
   } catch {
     return res.status(502).json({ok:false,error:'verification_unavailable'});
