@@ -45,7 +45,7 @@ export async function saveBookOrder({ invoiceId, bookKey, telegramId, contactId,
     INSERT INTO book_orders
       (invoice_id, book_key, telegram_user_id, sendpulse_contact_id, offer_id, email_sha256)
     VALUES
-      (${invoiceId}::uuid, ${bookKey}, ${String(telegramId)}::bigint, ${contactId}, ${offerId}::uuid, ${emailDigest(email)})
+      (${invoiceId}::uuid, ${bookKey}, ${String(telegramId || 0)}::bigint, ${contactId || ''}, ${offerId}::uuid, ${emailDigest(email)})
     ON CONFLICT (invoice_id) DO NOTHING
   `;
 }
@@ -92,6 +92,7 @@ export async function tagPaidInvoice(invoiceId, knownInvoice) {
   if (order.tagged) return { outcome: 'already_tagged', bookKey: order.book_key };
   const verified = knownInvoice || await verifyLavaInvoice(invoiceId);
   if (!invoicePaid(verified)) return { outcome: 'not_paid', bookKey: order.book_key };
+  if (!order.sendpulse_contact_id || String(order.telegram_user_id) === '0') return { outcome: 'unlinked', bookKey: order.book_key };
   if (!invoiceMatchesOrder(verified, order)) throw fail('Оплаченный счёт не соответствует заказу', 409);
   const db = sql();
   const lock = await db`
