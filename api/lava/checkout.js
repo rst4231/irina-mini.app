@@ -4,7 +4,7 @@ import { findSendpulseContact, saveBookOrder, UUID as ORDER_UUID } from './order
 const LAVA_API = 'https://gate.lava.top';
 const BOOKS = Object.freeze({
   profit: { id: '1a995492-be5d-4957-8dfb-29bb21d7f387', price: 690 },
-  beginner: { id: 'cfdceb95-cf9d-49d6-babc-736ade4edbc6', price: 590 },
+  beginner: { id: 'cfdceb95-cf9d-49d6-babc-736ade4edbc6', price: 1, offerPrice: 590, customAmount: true },
 });
 const CHECKOUT_ORIGIN = 'https://irina-miniapp.vercel.app';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -74,7 +74,7 @@ export function selectOffer(items, book) {
   const rub = offers.filter(o => UUID.test(String(o?.id || o?.offerId || '')));
   if (!rub.length) return null;
   // We never silently charge a different amount when Lava exposes the price.
-  const matching = rub.find(o => offerPrice(o) === book.price);
+  const matching = rub.find(o => offerPrice(o) === (book.offerPrice ?? book.price));
   const unknown = rub.find(o => !Number.isFinite(offerPrice(o)));
   return matching?.id || matching?.offerId || unknown?.id || unknown?.offerId || null;
 }
@@ -131,12 +131,14 @@ export default async function handler(req, res) {
   const telegramId = req.method === 'POST'
     ? readCheckoutIdentity(req.headers.cookie || '', process.env.TELEGRAM_BOT_TOKEN)
     : null;
-  if (req.method === 'POST' && !telegramId) {
-    return send(res, 401, { ok:false, error:'telegram_auth_required',
-      message:'Откройте страницу через мини-приложение @rstshelp_bot, чтобы покупка привязалась к вашему Telegram.' });
-  }
   try {
-    const contact = telegramId ? await findSendpulseContact(telegramId) : null;
+    let contact = null;
+    if (telegramId) {
+      try { contact = await findSendpulseContact(telegramId); }
+      catch { // SendPulse downtime must never block book purchases.
+        console.warn('book_checkout_contact_unavailable');
+      }
+    }
     const offerId = await resolveOffer(book);
     if (req.method === 'GET') return send(res, 200, { ok:true, ready:true, book:bookKey });
     const bookParam = encodeURIComponent(bookKey);
@@ -146,6 +148,7 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         email: String(req.body.email).trim().toLowerCase(),
         offerId, currency: 'RUB',
+        ...(book.customAmount ? { amount: book.price } : {}),
         successful_return_url: redirect,
         failure_return_url: redirect,
         cancel_return_url: redirect,
@@ -157,9 +160,23 @@ export default async function handler(req, res) {
     if (!paymentUrl) throw safeError(502, 'Lava.top не вернула ссылку на оплату.', 'payment_url_missing');
     const invoiceId = String(invoice?.id ?? invoice?.invoiceId ?? invoice?.contractId ?? payload?.invoiceId ?? '');
     if (!ORDER_UUID.test(invoiceId)) throw safeError(502, 'Lava.top не вернула номер счёта.', 'invoice_id_missing');
+    // For temporary 1 ₽ testing, never expose a payment link unless the
+    // payment provider has confirmed the charge amount. Lava requires
+    // "Price on request via API" on the offer for a custom amount.
+    if (book.customAmount) {
+      const direct = invoice?.amount ?? invoice?.totalAmount ?? invoice?.price
+        ?? invoice?.payment?.amount ?? payload?.amount;
+      const actual = direct && typeof direct === 'object' ? (direct.value ?? direct.amount) : direct;
+      const verifiedAmount = Number(actual);
+      if (!Number.isFinite(verifiedAmount) || verifiedAmount !== book.price) {
+        throw safeError(409,
+          'Тестовая цена 1 ₽ пока не подтверждена Lava.top. В настройках второй книги включите «Цена по запросу через API».',
+          'test_price_unverified');
+      }
+    }
     // Persist before exposing the checkout URL so webhook can identify buyer.
     await saveBookOrder({
-      invoiceId, bookKey, telegramId, contactId: contact.id,
+      invoiceId, bookKey, telegramId, contactId: contact?.id ?? null,
       offerId, email: req.body.email,
     });
     return send(res, 200, { ok:true, paymentUrl, invoiceId });

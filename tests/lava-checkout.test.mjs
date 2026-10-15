@@ -72,3 +72,37 @@ test('checkout authenticates buyer using short-lived server cookie, not user-sup
   assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret,now+20000000),null);
   assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret+'wrong',now+1000),null);
 });
+
+test('book purchases can proceed without Telegram identity', async () => {
+  const checkout = await readFile(new URL('../api/lava/checkout.js', import.meta.url), 'utf8');
+  const order = await readFile(new URL('../api/lava/order-tags.js', import.meta.url), 'utf8');
+  const browser = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(checkout, /telegram_auth_required/);
+  assert.ok(checkout.includes('contact?.id ?? null'));
+  assert.match(order, /telegramId: String/);
+  assert.match(order, /outcome: 'unlinked'/);
+  assert.doesNotMatch(browser, /Не удалось подтвердить Telegram/);
+});
+
+test('1 ruble test checkout is priced consistently and cannot expose unverified Lava amount', async () => {
+  const checkout = await readFile(new URL('../api/lava/checkout.js', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../book.html', import.meta.url), 'utf8');
+  const browser = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
+  assert.match(checkout, /price: 1, offerPrice: 590, customAmount: true/);
+  assert.match(checkout, /amount: book.price/);
+  assert.match(checkout, /test_price_unverified/);
+  assert.match(html, /Купить за 1 ₽/);
+  assert.match(browser, /amount: '1 ₽'/);
+  assert.doesNotMatch(html, /Оплата через Lava.top без открытия новой вкладки|Платёж откроется в этом же окне мини-приложения/);
+});
+
+test('book orders use Cloudflare D1 only and do not include Neon dependencies', async () => {
+  const source = await readFile(new URL('../api/lava/order-tags.js', import.meta.url), 'utf8');
+  const pkg = await readFile(new URL('../package.json', import.meta.url), 'utf8');
+  assert.match(source, /BOOK_ORDERS_D1_URL/);
+  assert.match(source, /BOOK_ORDERS_D1_TOKEN/);
+  assert.match(source, /d1Query\('/);
+  assert.match(source, /\/lock|\/tagged|\/unlock/);
+  assert.doesNotMatch(source, /@neondatabase|BOOK_ORDERS_DATABASE_URL|neon\(/i);
+  assert.doesNotMatch(pkg, /neondatabase|neon/i);
+});

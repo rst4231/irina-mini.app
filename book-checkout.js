@@ -13,16 +13,19 @@
   async function ensureTelegramSession() {
     const initData = window.Telegram?.WebApp?.initData || '';
     if (!initData) return;
-    const response = await fetch('/api/lava/session', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }), cache: 'no-store',
-    });
-    if (!response.ok) throw new Error('Не удалось подтвердить Telegram. Откройте страницу из мини-приложения бота.');
+    try {
+      await fetch('/api/lava/session', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }), cache: 'no-store',
+      });
+    } catch {
+      // Optional Telegram attribution never blocks checkout.
+    }
   }
   const items = {
     profit: { title: 'Как лить в плюс', amount: '690 ₽' },
-    beginner: { title: 'Арбитраж трафика от А до Я', amount: '590 ₽' }
+    beginner: { title: 'Арбитраж трафика от А до Я', amount: '1 ₽' }
   };
 
   function setError(value = '') {
