@@ -13,12 +13,15 @@
   async function ensureTelegramSession() {
     const initData = window.Telegram?.WebApp?.initData || '';
     if (!initData) return;
-    const response = await fetch('/api/lava/session', {
-      method: 'POST', credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }), cache: 'no-store',
-    });
-    // Identity is optional: an invalid Telegram session must not block payment.
+    try {
+      await fetch('/api/lava/session', {
+        method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData }), cache: 'no-store',
+      });
+    } catch {
+      // Optional Telegram attribution never blocks checkout.
+    }
   }
   const items = {
     profit: { title: 'Как лить в плюс', amount: '690 ₽' },
