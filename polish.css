@@ -355,3 +355,8 @@ html[data-theme="dark"] .app-version { color: #76859a; }
   .sync-error { animation: none; }
 }
 
+
+/* Rejected application: distinct neutral-red status without action button. */
+.application-card.is-rejected { background: radial-gradient(circle at 87% 18%, rgba(255,214,214,.62), transparent 32%), linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,240,241,.84)); }
+.application-card.is-rejected .application-icon { color:#d34f62; background:linear-gradient(145deg,#fff,#ffe9ec); }
+html[data-theme="dark"] .application-card.is-rejected { background:radial-gradient(circle at 87% 18%,rgba(198,65,81,.20),transparent 33%),linear-gradient(135deg,#302126,#221d27); }
