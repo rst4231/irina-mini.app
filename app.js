@@ -308,7 +308,7 @@ function setResourceContent(button, { title, subtitle, url, badge }) {
 }
 
 function renderVisibility() {
-  const paid = Boolean(lastProfileData?.hasPaymentTag);
+  const paid = Boolean(lastProfileData?.hasPaymentTag) && !Boolean(lastProfileData?.applicationRejected);
   appContent?.classList.toggle('has-payment', paid);
 
   applicationCard.hidden = paid;
@@ -363,7 +363,7 @@ function applyRuntimeConfig(config) {
   }
 
   renderVisibility();
-  if (lastProfileData && !lastProfileData.hasPaymentTag) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
+  if (lastProfileData && (!lastProfileData.hasPaymentTag || lastProfileData.applicationRejected)) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
   renderFreshness();
   showSyncError(!syncError?.hidden);
   maybeSyncFullscreen();
@@ -440,7 +440,7 @@ function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
   name.textContent = `Привет, ${getGreetingName(sendPulseName)}!`;
   renderVisibility();
-  if (!data?.hasPaymentTag) renderApplicationStatus(data, { stale });
+  if (!data?.hasPaymentTag || data.applicationRejected) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);
   renderFreshness();
 }
