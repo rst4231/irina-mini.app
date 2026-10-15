@@ -48,7 +48,25 @@
     .footer { padding-top:23px; text-align:center; color:#8999b2; font-size:12px; }
     @media(min-width:740px){.book-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.book{display:flex;flex-direction:column;padding:18px 20px 22px}.book .purchase{margin-top:auto;padding-top:22px}.cover {aspect-ratio:4 / 3}.book h2 {font-size:25px}.book p{font-size:14.5px}}
     @media(prefers-reduced-motion:reduce){.buy{transition:none}}
+    .buy { cursor:pointer; font-family:inherit; }
+    .buy:disabled { cursor:wait; opacity:.7; }
+    body.checkout-open { overflow:hidden; }
+    .checkout-dialog { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; padding:18px; background:rgba(10,24,50,.65); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); }
+    .checkout-dialog[hidden], .checkout-error[hidden], .payment-result[hidden] { display:none !important; }
+    .checkout-panel { position:relative; max-width:420px; width:100%; padding:26px 22px; background:#fff; color:#101d37; border:1px solid #e5edfa; border-radius:26px; box-shadow:0 20px 60px rgba(0,23,68,.24); }
+    .checkout-panel h2 { font-size:23px; margin:0 38px 9px 0; letter-spacing:-.04em; line-height:1.2; }
+    .checkout-lead { margin:0; font-size:13px; color:#7689a4; }
+    .checkout-book { margin:15px 0 3px; font-size:15px; font-weight:750; color:#2e476e; }
+    .checkout-total { margin:0 0 16px; font-size:32px; font-weight:850; color:#184fba; }
+    .checkout-panel label { display:block; margin:0 0 8px; font-size:13px; font-weight:750; }
+    .checkout-panel input { display:block; width:100%; padding:13px; min-height:48px; border:1px solid #d7e3f5; border-radius:14px; background:#f9fcff; color:#152946; font:inherit; font-size:16px; }
+    .checkout-panel .buy { margin-top:14px; }
+    .checkout-close { position:absolute; right:13px; top:13px; display:grid; place-items:center; width:40px; height:40px; border:0; border-radius:50%; background:#edf4ff; color:#284f8e; cursor:pointer; font-size:22px; }
+    .checkout-error { margin:11px 0 0; color:#b62c46; font-size:13px; }
+    .checkout-note { margin:9px 0 0; color:#8190aa; font-size:12px; }
+    .payment-result { border:1px solid #cbe2ff; border-radius:18px; padding:15px; margin-bottom:16px; background:#ecf5ff; font-size:14px; color:#21416e; }
   </style>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="/zoom-lock.js"></script>
 </head>
 <body>
@@ -59,6 +77,7 @@
       <h1>Руководства по арбитражу трафика</h1>
       <p>Две практические книги, которые помогут разобраться в арбитраже, выстроить систему запусков и работать на результат.</p>
     </header>
+    <div id="payment-result" class="payment-result" role="status" aria-live="polite" hidden><span id="payment-result-text"></span></div>
     <div class="book-grid">
       <article class="book" aria-labelledby="profit-book-title">
         <div class="cover-bg"><img class="cover" src="/book-profit.webp" width="420" height="315" alt="Обложка книги «Как лить в плюс. Арбитраж трафика»" fetchpriority="high" /></div>
@@ -84,8 +103,8 @@
         <p>Забирайте руководство и используйте его как рабочую инструкцию перед каждым запуском.</p>
         <div class="purchase">
           <div class="price" aria-label="690 рублей">690 ₽</div>
-          <a class="buy" href="https://app.lava.top/products/1a995492-be5d-4957-8dfb-29bb21d7f387" target="_blank" rel="noopener noreferrer">Купить <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
-          <div class="payment">Оплата через Lava.top</div>
+          <button class="buy" type="button" data-checkout-book="profit">Купить за 690 ₽ <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+          <div class="payment">Оплата через Lava.top без открытия новой вкладки</div>
         </div>
       </article>
       <article class="book" aria-labelledby="beginner-book-title">
@@ -104,12 +123,29 @@
         <p>Внутри не просто теория, а логика действий: от выбора ниши до запуска и оптимизации рекламных кампаний.</p>
         <div class="purchase">
           <div class="price" aria-label="590 рублей">590 ₽</div>
-          <a class="buy" href="https://app.lava.top/products/cfdceb95-cf9d-49d6-babc-736ade4edbc6" target="_blank" rel="noopener noreferrer">Купить <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
-          <div class="payment">Оплата через Lava.top</div>
+          <button class="buy" type="button" data-checkout-book="beginner">Купить за 590 ₽ <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+          <div class="payment">Оплата через Lava.top без открытия новой вкладки</div>
         </div>
       </article>
     </div>
     <footer class="footer">© 2018–2026</footer>
   </main>
+  <div id="checkout-dialog" class="checkout-dialog" hidden>
+    <section class="checkout-panel" role="dialog" aria-modal="true" aria-labelledby="checkout-heading">
+      <button type="button" class="checkout-close" aria-label="Закрыть" data-close-checkout>×</button>
+      <h2 id="checkout-heading">Покупка книги</h2>
+      <p class="checkout-lead">Оплата через Lava.top</p>
+      <div id="checkout-book" class="checkout-book"></div>
+      <div id="checkout-total" class="checkout-total"></div>
+      <form id="checkout-form">
+        <label for="checkout-email">Электронная почта для получения книги</label>
+        <input id="checkout-email" type="email" autocomplete="email" inputmode="email" placeholder="mail@example.com" maxlength="320" required />
+        <p id="checkout-error" class="checkout-error" role="alert" hidden></p>
+        <button class="buy" id="checkout-submit" type="submit">Перейти к оплате</button>
+        <p class="checkout-note">Платёж откроется в этом же окне мини-приложения.</p>
+      </form>
+    </section>
+  </div>
+  <script defer src="/book-checkout.js"></script>
 </body>
 </html>
