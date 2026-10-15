@@ -42,8 +42,33 @@ test('Lava API key never appears in browser scripts or markup', async () => {
 
 test('invoice status reads official v1 API, webhook has server-only header authentication', async () => {
   const status = await readFile(new URL('../api/lava/status.js',import.meta.url),'utf8');
+  const tags = await readFile(new URL('../api/lava/order-tags.js',import.meta.url),'utf8');
   const webhook = await readFile(new URL('../api/lava/webhook.js',import.meta.url),'utf8');
-  assert.match(status,/\/api\/v1\/invoices\//);
+  assert.match(tags,/\/api\/v1\/invoices\//);
+  assert.match(status,/tagPaidInvoice/);
   assert.match(webhook,/timingSafeEqual/);
   assert.match(webhook,/x-api-key/);
+  assert.match(webhook,/payment\.success/);
+});
+
+test('payment tag maps to the right book, and only verified success qualifies', async () => {
+  const { TAG_BY_BOOK, invoicePaid, invoiceMatchesOrder, emailDigest } = await import('../api/lava/order-tags.js');
+  assert.equal(TAG_BY_BOOK.profit, 'Купил книгу 1');
+  assert.equal(TAG_BY_BOOK.beginner, 'Купил книгу 2');
+  for (const status of ['FAILED', 'PENDING', 'CANCELLED', 'REFUNDED']) {
+    assert.equal(invoicePaid({status}), false);
+  }
+  assert.equal(invoicePaid({status:'SUCCESS'}), true);
+  const order={offer_id:'12345678-1111-4111-8111-1234567890ab', email_sha256:emailDigest('buyer@example.com')};
+  assert.equal(invoiceMatchesOrder({offerId:order.offer_id,buyer:{email:'Buyer@Example.com'}},order),true);
+  assert.equal(invoiceMatchesOrder({offerId:'bad',buyer:{email:'Buyer@Example.com'}},order),false);
+});
+test('checkout authenticates buyer using short-lived server cookie, not user-supplied ID', async () => {
+  const { makeCheckoutCookie, readCheckoutIdentity } = await import('../api/lava/session.js');
+  const now = Date.UTC(2026,9,15,9,0,0);
+  const secret = 'test-not-an-actual-bot-token';
+  const cookie=makeCheckoutCookie('123456789',secret,now);
+  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret,now+1000),'123456789');
+  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret,now+20000000),null);
+  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret+'wrong',now+1000),null);
 });
