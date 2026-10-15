@@ -78,4 +78,5 @@ test('book page has no Home navigation and keeps both external purchase buttons'
   assert.equal((book.match(/data-external-purchase=/g) || []).length, 2);
   assert.equal((book.match(/target="_blank"/g) || []).length, 2);
   assert.match(book, /<header class="intro">/);
+  assert.match(book, /\.intro \{ text-align:center; padding:0 14px 23px; \}/);
 });
