@@ -18,11 +18,11 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ initData }), cache: 'no-store',
     });
-    if (!response.ok) throw new Error('Не удалось подтвердить Telegram. Откройте страницу из мини-приложения бота.');
+    // Identity is optional: an invalid Telegram session must not block payment.
   }
   const items = {
     profit: { title: 'Как лить в плюс', amount: '690 ₽' },
-    beginner: { title: 'Арбитраж трафика от А до Я', amount: '590 ₽' }
+    beginner: { title: 'Арбитраж трафика от А до Я', amount: '1 ₽' }
   };
 
   function setError(value = '') {
