@@ -55,6 +55,7 @@ const APPLICATION_ICONS = {
   form: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M6 3h9l4 4v14H6V3Zm8 1.8V8h3.2L14 4.8ZM9 12h7v2H9v-2Zm0 4h7v2H9v-2Z"/></svg>',
   pending: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.1-5l-2.4 2.4H21V3l-2.7 2.7A9 9 0 0 0 12 3Zm-1 4h2v5.2l3.5 2.1-1 1.7-4.5-2.7V7Z"/></svg>',
   approved: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 2.8 15 5l3.7.1 1.1 3.5 2.2 3-2.2 3-1.1 3.5-3.7.1-3 2.2-3-2.2-3.7-.1-1.1-3.5-2.2-3 2.2-3 1.1-3.5L9 5l3-2.2Zm-1.2 12.6 6-6-1.4-1.4-4.6 4.6-2.2-2.2-1.4 1.4 3.6 3.6Z"/></svg>',
+  rejected: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 3 2.6 20h18.8L12 3Zm0 6v5m0 3v.2" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   terms: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M5 3h14v18H5V3Zm3 4h8V5H8v2Zm0 4h8V9H8v2Zm0 4h5v-2H8v2Zm7.2 3.4 4.1-4.1-1.4-1.4-2.7 2.7-1.2-1.2-1.4 1.4 2.6 2.6Z"/></svg>',
 };
 
@@ -307,7 +308,7 @@ function setResourceContent(button, { title, subtitle, url, badge }) {
 }
 
 function renderVisibility() {
-  const paid = Boolean(lastProfileData?.hasPaymentTag);
+  const paid = Boolean(lastProfileData?.hasPaymentTag) && !Boolean(lastProfileData?.applicationRejected);
   appContent?.classList.toggle('has-payment', paid);
 
   applicationCard.hidden = paid;
@@ -362,7 +363,7 @@ function applyRuntimeConfig(config) {
   }
 
   renderVisibility();
-  if (lastProfileData && !lastProfileData.hasPaymentTag) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
+  if (lastProfileData && (!lastProfileData.hasPaymentTag || lastProfileData.applicationRejected)) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
   renderFreshness();
   showSyncError(!syncError?.hidden);
   maybeSyncFullscreen();
@@ -375,11 +376,12 @@ function renderApplicationStatus(data, { stale = false } = {}) {
     completed: Boolean(data?.applicationCompleted),
     approved: Boolean(data?.applicationApproved),
     receivedTerms: Boolean(data?.receivedTerms),
+    rejected: Boolean(data?.applicationRejected),
     config: runtimeConfig,
   });
 
   setApplicationLoading(false);
-  applicationCard.classList.remove('is-incomplete', 'is-complete', 'is-approved', 'is-terms');
+  applicationCard.classList.remove('is-incomplete', 'is-complete', 'is-approved', 'is-terms', 'is-rejected');
   applicationCard.classList.add(`is-${state.tone}`);
   applicationIcon.innerHTML = APPLICATION_ICONS[state.icon] || APPLICATION_ICONS.form;
   applicationStatus.textContent = state.status;
@@ -438,7 +440,7 @@ function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
   name.textContent = `Привет, ${getGreetingName(sendPulseName)}!`;
   renderVisibility();
-  if (!data?.hasPaymentTag) renderApplicationStatus(data, { stale });
+  if (!data?.hasPaymentTag || data.applicationRejected) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);
   renderFreshness();
 }
@@ -518,7 +520,7 @@ async function loadSendPulseProfile({ silent = false } = {}) {
       renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
     } else if (!silent) {
       setApplicationLoading(false);
-      applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms');
+      applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms', 'is-rejected');
       applicationCard.classList.add('is-incomplete');
       applicationIcon.innerHTML = APPLICATION_ICONS.form;
       applicationStatus.textContent = 'Не удалось проверить анкету';

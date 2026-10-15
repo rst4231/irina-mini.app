@@ -1,8 +1,18 @@
 import { DEFAULT_RUNTIME_CONFIG } from './runtime-config.js';
 
-export function getApplicationViewState({ completed, approved, receivedTerms, config = DEFAULT_RUNTIME_CONFIG }) {
+export function getApplicationViewState({ completed, approved, receivedTerms, rejected = false, config = DEFAULT_RUNTIME_CONFIG }) {
   const copy = config?.copy?.application || DEFAULT_RUNTIME_CONFIG.copy.application;
   const links = config?.links || DEFAULT_RUNTIME_CONFIG.links;
+
+  if (rejected) {
+    return {
+      status: copy.rejected.status,
+      description: copy.rejected.description,
+      icon: 'rejected',
+      tone: 'rejected',
+      action: null,
+    };
+  }
 
   if (approved && receivedTerms) {
     return {

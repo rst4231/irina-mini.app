@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { APP_RELEASE } from '../release.js';
 import { mergeRuntimeConfig } from '../runtime-config.js';
 
-test('internal release is v.06', () => {
-  assert.equal(APP_RELEASE, 'v.06');
+test('internal release is v.07', () => {
+  assert.equal(APP_RELEASE, 'v.07');
 });
 
 test('runtime config still supports feature switches and UI settings', () => {

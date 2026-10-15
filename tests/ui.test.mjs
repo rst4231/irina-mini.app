@@ -56,3 +56,18 @@ test('approved application no longer displays action timing hint', async () => {
   assert.match(source, /state\.tone === 'approved' \? ''/);
   assert.match(source, /applicationHint\.hidden = !actionHint/);
 });
+
+test('guide library is internal and both native pages disable zoom', async () => {
+  const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const book = await readFile(new URL('../book.html', import.meta.url), 'utf8');
+  assert.match(index, /Руководства по арбитражу трафика/);
+  assert.match(index, /https:\/\/irina-miniapp\.vercel\.app\/book/);
+  for (const html of [index, book]) {
+    assert.match(html, /user-scalable=no/);
+    assert.match(html, /zoom-lock\.js/);
+  }
+  assert.match(book, /690 ₽/);
+  assert.match(book, /590 ₽/);
+  assert.match(book, /book-profit\.webp/);
+  assert.match(book, /book-beginner\.webp/);
+});
