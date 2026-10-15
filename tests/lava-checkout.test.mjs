@@ -11,12 +11,12 @@ test('books use the original direct Lava.top product links in a separate tab', a
   for (const [book, id, price] of books) {
     const expected = '<a class="buy" href="https://app.lava.top/products/' + id
       + '" target="_blank" rel="noopener noreferrer external" data-external-purchase="'
-      + book + '">Купить за ' + price + ' ₽';
+      + book + '">Перейти к покупке';
     assert.ok(html.includes(expected), 'External purchase link missing for ' + book);
   }
   assert.match(html, /<script defer src="\/book-checkout\.js"><\/script>/);
   assert.doesNotMatch(html, /data-checkout-book|id="checkout-dialog"|id="checkout-email"|id="payment-result"/);
-  assert.doesNotMatch(html, /Купить за 1 ₽/);
+  assert.doesNotMatch(html, /Купить за 1 ₽|Купить за 690 ₽|Купить за 590 ₽/);
 });
 
 test('Telegram opens Lava product links externally, never in the Mini App', async () => {
