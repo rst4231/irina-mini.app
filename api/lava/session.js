@@ -24,7 +24,7 @@ export function readCheckoutIdentity(cookieHeader, token, now = Date.now()) {
   if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
   try {
     const obj = JSON.parse(Buffer.from(parts[0], 'base64url').toString());
-    if (!/^\\d{1,18}$/.test(String(obj.id))) return null;
+    if (!/^[0-9]{1,18}$/.test(String(obj.id))) return null;
     if (!Number.isSafeInteger(obj.exp) || obj.exp < now / 1000 || obj.exp > now / 1000 + MAX_AGE + 60) return null;
     return obj.id;
   } catch { return null; }
