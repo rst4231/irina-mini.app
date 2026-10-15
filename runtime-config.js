@@ -15,6 +15,10 @@ const DEFAULT_APPLICATION_COPY = {
     button: 'Обсудить условия',
     hint: 'Займет 10–15 минут',
   },
+  rejected: {
+    status: 'Анкета не одобрена',
+    description: 'К сожалению, ваша анкета не прошла отбор',
+  },
   terms: {
     status: 'Условия готовы',
     description: 'Условия готовы. Посмотрите детали участия',
@@ -66,8 +70,8 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     recruitmentSubtitle: 'Научитесь лить и станьте частью сильного сообщества',
     aboutTitle: 'О команде, кейсы, отзывы',
     aboutSubtitle: 'Реальные результаты и отзывы',
-    bookTitle: 'Как лить в плюс. Арбитраж трафика',
-    bookSubtitle: 'Руководство по арбитражу трафика',
+    bookTitle: 'Руководства по арбитражу трафика',
+    bookSubtitle: 'Две книги для прибыльных запусков',
     mentorTitle: 'Перейти к наставнику',
     mentorSubtitle: 'Продолжить практику с наставником',
     trustedByTitle: 'Нам доверяют и о нас говорят',
@@ -140,7 +144,7 @@ function safeInterval(value, fallback) {
 }
 
 function mergeApplicationCopy(target, source = {}) {
-  for (const state of ['incomplete', 'complete', 'approved', 'terms']) {
+  for (const state of ['incomplete', 'complete', 'approved', 'terms', 'rejected']) {
     const incoming = source?.[state];
     if (!incoming || typeof incoming !== 'object') continue;
     for (const key of ['status', 'description', 'button', 'hint']) {
