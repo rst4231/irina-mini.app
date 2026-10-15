@@ -1,3 +1,5 @@
+import { validateInitData } from '../profile.js';
+import { findSendpulseContact, saveBookOrder, UUID as ORDER_UUID } from './order-tags.js';
 // Server-only Lava.top integration. The client never receives the API key.
 const LAVA_API = 'https://gate.lava.top';
 const BOOKS = Object.freeze({
@@ -124,7 +126,16 @@ export default async function handler(req, res) {
   if (req.method === 'POST' && (!EMAIL.test(String(req.body?.email || '')) || String(req.body?.email || '').length > 320)) {
     return send(res, 400, { ok:false, error:'invalid_email', message:'Введите корректный e-mail для получения книги.' });
   }
+  // Do not accept a user ID from the browser. Authenticate Telegram initData
+  // with the bot token before allowing a purchase to be attributed.
+  const initData = String(req.body?.initData || '');
+  const user = req.method === 'POST' ? validateInitData(initData, process.env.TELEGRAM_BOT_TOKEN) : null;
+  if (req.method === 'POST' && !user?.id) {
+    return send(res, 401, { ok:false, error:'telegram_auth_required',
+      message:'Откройте руководство через мини-приложение в боте @rstshelp_bot, чтобы покупка привязалась к вашему аккаунту.' });
+  }
   try {
+    const contact = user ? await findSendpulseContact(user.id) : null;
     const offerId = await resolveOffer(book);
     if (req.method === 'GET') return send(res, 200, { ok:true, ready:true, book:bookKey });
     const bookParam = encodeURIComponent(bookKey);
@@ -143,7 +154,14 @@ export default async function handler(req, res) {
     const invoiceUrl = invoice?.paymentUrl ?? invoice?.payment_url ?? invoice?.url ?? payload?.paymentUrl;
     const paymentUrl = trustedInvoiceUrl(invoiceUrl);
     if (!paymentUrl) throw safeError(502, 'Lava.top не вернула ссылку на оплату.', 'payment_url_missing');
-    return send(res, 200, { ok:true, paymentUrl, invoiceId: invoice?.id ?? invoice?.invoiceId ?? null });
+    const invoiceId = String(invoice?.id ?? invoice?.invoiceId ?? invoice?.contractId ?? payload?.invoiceId ?? '');
+    if (!ORDER_UUID.test(invoiceId)) throw safeError(502, 'Lava.top не вернула номер счёта.', 'invoice_id_missing');
+    // Persist before exposing the checkout URL so webhook can identify buyer.
+    await saveBookOrder({
+      invoiceId, bookKey, telegramId: user.id, contactId: contact.id,
+      offerId, email: req.body.email,
+    });
+    return send(res, 200, { ok:true, paymentUrl, invoiceId });
   } catch (error) {
     return send(res, error?.status || 502, { ok:false, error:error?.code || 'checkout_unavailable', message:error?.message || 'Не удалось подготовить платёж.' });
   }
