@@ -36,7 +36,7 @@ test('high-quality local covers replace 3KB thumbnails', async () => {
 test('Lava API key never appears in browser scripts or markup', async () => {
   for (const path of ['book.html','book-checkout.js']) {
     const source = await readFile(new URL('../'+path,import.meta.url),'utf8');
-    assert.doesNotMatch(source,/LAVA_TOP_API_KEY|LAVA_TOP_WEBHOOK_KEY|AcNCmXhsuOm4hIvYRc6j1XcWjFi9IXV83QCo8IoT9NIJIeeS2tzNONoY3k8L9UVj/);
+    assert.doesNotMatch(source,/LAVA_TOP_API_KEY|LAVA_TOP_WEBHOOK_KEY|REDACTED_KEY_SHOULD_NOT_APPEAR/);
   }
 });
 
