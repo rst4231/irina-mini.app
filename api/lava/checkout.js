@@ -66,22 +66,25 @@ function offerPrice(offer) {
   return NaN;
 }
 export function selectOffer(items, book) {
-  const item = items.find(p => String(p?.id || p?.productId || p?.product_id || '') === book.id);
+  const item = items.find(p => String(p?.id || p?.productId || p?.product_id || p?.product?.id || '') === book.id);
   if (!item) return null;
   const offers = Array.isArray(item.offers) ? item.offers : Array.isArray(item.data?.offers) ? item.data.offers : [];
-  const rub = offers.filter(o => UUID.test(String(o?.id || '')));
+  const rub = offers.filter(o => UUID.test(String(o?.id || o?.offerId || '')));
   if (!rub.length) return null;
   // We never silently charge a different amount when Lava exposes the price.
   const matching = rub.find(o => offerPrice(o) === book.price);
   const unknown = rub.find(o => !Number.isFinite(offerPrice(o)));
-  return matching?.id || unknown?.id || null;
+  return matching?.id || matching?.offerId || unknown?.id || unknown?.offerId || null;
 }
 async function resolveOffer(book) {
   const cached = cache.get(book.id);
   if (cached && cached.expires > Date.now()) return cached.id;
-  // 'ALL' also includes hidden products; product IDs in public URLs are not offer IDs.
-  for (let page = 1; page <= 3; page++) {
-    const params = new URLSearchParams({ feedVisibility: 'ALL', page: String(page), size: '100' });
+  // Lava uses cursor pagination (beforeCreatedAt), not generic page/size.
+  // ALL is important for hidden or API-priced products.
+  let beforeCreatedAt = '';
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const params = new URLSearchParams({ feedVisibility: 'ALL' });
+    if (beforeCreatedAt) params.set('beforeCreatedAt', beforeCreatedAt);
     const payload = await lavaFetch('/api/v2/products?' + params.toString());
     const products = productArray(payload);
     const offer = selectOffer(products, book);
@@ -89,7 +92,11 @@ async function resolveOffer(book) {
       cache.set(book.id, { id: offer, expires: Date.now() + 10 * 60_000 });
       return offer;
     }
-    if (products.length < 20) break;
+    if (!products.length) break;
+    const last = products.at(-1);
+    const nextCursor = String(last?.createdAt || last?.created_at || '');
+    if (!nextCursor || nextCursor === beforeCreatedAt || products.length < 10) break;
+    beforeCreatedAt = nextCursor;
   }
   throw safeError(503, 'Не удалось найти предложение для книги в Lava.top. Проверьте цену и доступность товара.', 'offer_not_found');
 }
@@ -132,8 +139,9 @@ export default async function handler(req, res) {
         cancel_return_url: redirect,
       }),
     });
-    const invoice = payload?.data ?? payload?.result ?? payload;
-    const paymentUrl = trustedInvoiceUrl(invoice?.paymentUrl ?? invoice?.payment_url ?? invoice?.url);
+    const invoice = payload?.data?.invoice ?? payload?.data ?? payload?.result ?? payload;
+    const invoiceUrl = invoice?.paymentUrl ?? invoice?.payment_url ?? invoice?.url ?? payload?.paymentUrl;
+    const paymentUrl = trustedInvoiceUrl(invoiceUrl);
     if (!paymentUrl) throw safeError(502, 'Lava.top не вернула ссылку на оплату.', 'payment_url_missing');
     return send(res, 200, { ok:true, paymentUrl, invoiceId: invoice?.id ?? invoice?.invoiceId ?? null });
   } catch (error) {
