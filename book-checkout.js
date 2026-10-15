@@ -10,6 +10,16 @@
   const resultText = document.getElementById('payment-result-text');
   let selected = null;
   let busy = false;
+  async function ensureTelegramSession() {
+    const initData = window.Telegram?.WebApp?.initData || '';
+    if (!initData) return;
+    const response = await fetch('/api/lava/session', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }), cache: 'no-store',
+    });
+    if (!response.ok) throw new Error('Не удалось подтвердить Telegram. Откройте страницу из мини-приложения бота.');
+  }
   const items = {
     profit: { title: 'Как лить в плюс', amount: '690 ₽' },
     beginner: { title: 'Арбитраж трафика от А до Я', amount: '590 ₽' }
@@ -56,6 +66,7 @@
     setError();
     const email = input.value.trim();
     try {
+      await ensureTelegramSession();
       const response = await fetch('/api/lava/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
