@@ -32,7 +32,8 @@
     setError();
     dialog.hidden = false;
     document.body.classList.add('checkout-open');
-    const stored = sessionStorage.getItem('irina.book.email');
+    let stored = '';
+    try { stored = sessionStorage.getItem('irina.book.email') || ''; } catch {}
     if (stored && !input.value) input.value = stored;
     input.focus({preventScroll:true});
   }
