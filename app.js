@@ -552,6 +552,20 @@ applicationButton.addEventListener('click', (event) => {
   setTimeout(() => telegram.close(), 120);
 });
 
+// Establish a short-lived HttpOnly server session before navigating to /book.
+bookButton?.addEventListener('click', async (event) => {
+  if (!telegram?.initData) return;
+  event.preventDefault();
+  try {
+    await fetch('/api/lava/session', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: telegram.initData }),
+    });
+  } catch { /* Checkout shows an actionable auth error if the session fails. */ }
+  window.location.assign(bookButton.href);
+});
+
 document.querySelectorAll('.resource-button, .footer-telegram-icon').forEach((element) => {
   element.addEventListener('click', () => hapticImpact('light'));
 });
