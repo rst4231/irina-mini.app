@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import { neon } from '@neondatabase/serverless';
 
 const SENDPULSE_BASE = 'https://api.sendpulse.com/telegram';
 const SENDPULSE_BOT_ID = '6671465ac84ab24b4702fa25';
@@ -10,10 +9,28 @@ function fail(error, status = 502) { const e = new Error(error); e.status = stat
 export function emailDigest(email) {
   return crypto.createHash('sha256').update(String(email).trim().toLowerCase()).digest('hex');
 }
-function sql() {
-  const url = process.env.BOOK_ORDERS_DATABASE_URL;
-  if (!url) throw fail('Хранилище платежей не настроено', 503);
-  return neon(url);
+async function d1Query(path, data) {
+  const endpoint = process.env.BOOK_ORDERS_D1_URL;
+  const token = process.env.BOOK_ORDERS_D1_TOKEN;
+  if (!endpoint || !token) throw fail('Хранилище покупок не настроено', 503);
+  let response;
+  try {
+    response = await fetch(endpoint + path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Token': token,
+      },
+      body: JSON.stringify(data),
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
+    });
+  } catch {
+    throw fail('Cloudflare D1 временно недоступна', 503);
+  }
+  const body = await response.json().catch(() => null);
+  if (!response.ok || body?.ok !== true) throw fail('Cloudflare D1 отклонила операцию', 503);
+  return body;
 }
 async function spFetch(path, options) {
   if (!process.env.SENDPULSE_API_KEY) throw fail('SendPulse не настроен', 503);
@@ -39,26 +56,20 @@ export async function findSendpulseContact(telegramId) {
   return { id, tags: Array.isArray(data.tags) ? data.tags : [] };
 }
 export async function saveBookOrder({ invoiceId, bookKey, telegramId, contactId, offerId, email }) {
-  if (!UUID.test(invoiceId) || !UUID.test(offerId) || !TAG_BY_BOOK[bookKey]) throw fail('Ошибка данных заказа', 422);
-  const db = sql();
-  await db`
-    INSERT INTO book_orders
-      (invoice_id, book_key, telegram_user_id, sendpulse_contact_id, offer_id, email_sha256)
-    VALUES
-      (${invoiceId}::uuid, ${bookKey}, ${String(telegramId || 0)}::bigint, ${contactId || ''}, ${offerId}::uuid, ${emailDigest(email)})
-    ON CONFLICT (invoice_id) DO NOTHING
-  `;
+  if (!UUID.test(invoiceId) || !UUID.test(offerId) || !TAG_BY_BOOK[bookKey])
+    throw fail('Ошибка данных заказа', 422);
+  await d1Query('/save', {
+    invoiceId, bookKey,
+    telegramId: String(telegramId || '0'),
+    contactId: contactId || '',
+    offerId,
+    emailDigest: emailDigest(email),
+  });
 }
 export async function loadBookOrder(invoiceId) {
   if (!UUID.test(invoiceId)) return null;
-  const db = sql();
-  const found = await db`
-    SELECT invoice_id::text AS invoice_id, book_key, telegram_user_id::text AS telegram_user_id,
-      sendpulse_contact_id, offer_id::text AS offer_id,
-      email_sha256, tagged_at IS NOT NULL AS tagged
-    FROM book_orders WHERE invoice_id = ${invoiceId}::uuid LIMIT 1
-  `;
-  return found[0] || null;
+  const payload = await d1Query('/load', { invoiceId });
+  return payload.order;
 }
 export function invoicePaid(invoice) {
   const raw = String(invoice?.status ?? invoice?.paymentStatus ?? invoice?.contractStatus ?? '').toLowerCase();
@@ -94,16 +105,8 @@ export async function tagPaidInvoice(invoiceId, knownInvoice) {
   if (!invoicePaid(verified)) return { outcome: 'not_paid', bookKey: order.book_key };
   if (!order.sendpulse_contact_id || String(order.telegram_user_id) === '0') return { outcome: 'unlinked', bookKey: order.book_key };
   if (!invoiceMatchesOrder(verified, order)) throw fail('Оплаченный счёт не соответствует заказу', 409);
-  const db = sql();
-  const lock = await db`
-    UPDATE book_orders
-    SET tag_lock_until = now() + interval '75 seconds'
-    WHERE invoice_id = ${invoiceId}::uuid
-      AND tagged_at IS NULL
-      AND (tag_lock_until IS NULL OR tag_lock_until < now())
-    RETURNING book_key
-  `;
-  if (!lock.length) return { outcome: 'in_progress', bookKey: order.book_key };
+  const lock = await d1Query('/lock', { invoiceId });
+  if (!lock.locked) return { outcome: 'in_progress', bookKey: order.book_key };
   try {
     const current = await findSendpulseContact(order.telegram_user_id);
     if (current.id !== order.sendpulse_contact_id) throw fail('Контакт SendPulse изменился', 409);
@@ -114,16 +117,10 @@ export async function tagPaidInvoice(invoiceId, knownInvoice) {
         body: JSON.stringify({ contact_id: current.id, tags: [tag] }),
       });
     }
-    await db`
-      UPDATE book_orders SET tagged_at = now(), tag_lock_until = NULL
-      WHERE invoice_id = ${invoiceId}::uuid
-    `;
+    await d1Query('/tagged', { invoiceId });
     return { outcome: 'tagged', bookKey: order.book_key };
   } catch (error) {
-    await db`
-      UPDATE book_orders SET tag_lock_until = NULL
-      WHERE invoice_id = ${invoiceId}::uuid AND tagged_at IS NULL
-    `.catch(() => {});
+    await d1Query('/unlock', { invoiceId }).catch(() => {});
     throw error;
   }
 }
