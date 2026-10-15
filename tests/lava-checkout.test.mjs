@@ -1,108 +1,48 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
-import { selectOffer } from '../api/lava/checkout.js';
 
-const productId = '1a995492-be5d-4957-8dfb-29bb21d7f387';
-const offerId = '12345678-1111-4111-8111-1234567890ab';
-const sampleBook = { id: productId, price: 690 };
-
-test('Lava checkout selects the matching RUB offer for a product', () => {
-  assert.equal(selectOffer([{id:productId,offers:[{id:offerId,currency:'RUB',price:690}]}],sampleBook),offerId);
-  assert.equal(selectOffer([{id:'00000000-1111-4111-8111-1234567890ab',offers:[{id:offerId}]}],sampleBook),null);
-});
-
-test('Lava rejects explicit wrong price instead of silently charging the buyer', () => {
-  assert.equal(selectOffer([{id:productId,offers:[{id:offerId,currency:'RUB',price:1590}]}],sampleBook),null);
-});
-
-test('book page opens checkout in same webview instead of a new tab', async () => {
-  const html = await readFile(new URL('../book.html',import.meta.url),'utf8');
-  const script = await readFile(new URL('../book-checkout.js',import.meta.url),'utf8');
-  for (const name of ['profit','beginner']) assert.match(html,new RegExp('data-checkout-book="'+name+'"'));
-  assert.doesNotMatch(html,/href="https:\/\/app\.lava\.top\/products\//);
-  assert.match(script,/location\.assign\(url\.href\)/);
-  assert.doesNotMatch(script,/window\.open\(/);
-  assert.match(html,/checkout-email/);
-});
-
-test('high-quality local covers replace 3KB thumbnails', async () => {
-  const profit = await stat(new URL('../book-profit.webp',import.meta.url));
-  const beginner = await stat(new URL('../book-beginner.webp',import.meta.url));
-  assert.ok(profit.size > 25_000);
-  assert.ok(beginner.size > 50_000);
-});
-
-test('Lava API key never appears in browser scripts or markup', async () => {
-  for (const path of ['book.html','book-checkout.js']) {
-    const source = await readFile(new URL('../'+path,import.meta.url),'utf8');
-    assert.doesNotMatch(source,/LAVA_TOP_API_KEY|LAVA_TOP_WEBHOOK_KEY|REDACTED_KEY_SHOULD_NOT_APPEAR/);
-  }
-});
-
-test('invoice status reads official v1 API, webhook has server-only header authentication', async () => {
-  const status = await readFile(new URL('../api/lava/status.js',import.meta.url),'utf8');
-  const tags = await readFile(new URL('../api/lava/order-tags.js',import.meta.url),'utf8');
-  const webhook = await readFile(new URL('../api/lava/webhook.js',import.meta.url),'utf8');
-  assert.match(tags,/\/api\/v1\/invoices\//);
-  assert.match(status,/tagPaidInvoice/);
-  assert.match(webhook,/timingSafeEqual/);
-  assert.match(webhook,/x-api-key/);
-  assert.match(webhook,/payment\.success/);
-});
-
-test('payment tag maps to the right book, and only verified success qualifies', async () => {
-  const { TAG_BY_BOOK, invoicePaid, invoiceMatchesOrder, emailDigest } = await import('../api/lava/order-tags.js');
-  assert.equal(TAG_BY_BOOK.profit, 'Купил книгу 1');
-  assert.equal(TAG_BY_BOOK.beginner, 'Купил книгу 2');
-  for (const status of ['FAILED', 'PENDING', 'CANCELLED', 'REFUNDED']) {
-    assert.equal(invoicePaid({status}), false);
-  }
-  assert.equal(invoicePaid({status:'SUCCESS'}), true);
-  const order={offer_id:'12345678-1111-4111-8111-1234567890ab', email_sha256:emailDigest('buyer@example.com')};
-  assert.equal(invoiceMatchesOrder({offerId:order.offer_id,buyer:{email:'Buyer@Example.com'}},order),true);
-  assert.equal(invoiceMatchesOrder({offerId:'bad',buyer:{email:'Buyer@Example.com'}},order),false);
-});
-test('checkout authenticates buyer using short-lived server cookie, not user-supplied ID', async () => {
-  const { makeCheckoutCookie, readCheckoutIdentity } = await import('../api/lava/session.js');
-  const now = Date.UTC(2026,9,15,9,0,0);
-  const secret = 'test-not-an-actual-bot-token';
-  const cookie=makeCheckoutCookie('123456789',secret,now);
-  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret,now+1000),'123456789');
-  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret,now+20000000),null);
-  assert.equal(readCheckoutIdentity('irina_book_auth='+cookie,secret+'wrong',now+1000),null);
-});
-
-test('book purchases can proceed without Telegram identity', async () => {
-  const checkout = await readFile(new URL('../api/lava/checkout.js', import.meta.url), 'utf8');
-  const order = await readFile(new URL('../api/lava/order-tags.js', import.meta.url), 'utf8');
-  const browser = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(checkout, /telegram_auth_required/);
-  assert.ok(checkout.includes('contact?.id ?? null'));
-  assert.match(order, /telegramId: String/);
-  assert.match(order, /outcome: 'unlinked'/);
-  assert.doesNotMatch(browser, /Не удалось подтвердить Telegram/);
-});
-
-test('1 ruble test checkout is priced consistently and cannot expose unverified Lava amount', async () => {
-  const checkout = await readFile(new URL('../api/lava/checkout.js', import.meta.url), 'utf8');
+test('books use the original direct Lava.top product links in a separate tab', async () => {
   const html = await readFile(new URL('../book.html', import.meta.url), 'utf8');
-  const browser = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
-  assert.match(checkout, /price: 1, offerPrice: 590, customAmount: true/);
-  assert.match(checkout, /amount: book.price/);
-  assert.match(checkout, /test_price_unverified/);
-  assert.match(html, /Купить за 1 ₽/);
-  assert.match(browser, /amount: '1 ₽'/);
-  assert.doesNotMatch(html, /Оплата через Lava.top без открытия новой вкладки|Платёж откроется в этом же окне мини-приложения/);
+  const books = [
+    ['profit', '1a995492-be5d-4957-8dfb-29bb21d7f387', '690'],
+    ['beginner', 'cfdceb95-cf9d-49d6-babc-736ade4edbc6', '590'],
+  ];
+  for (const [book, id, price] of books) {
+    const expected = '<a class="buy" href="https://app.lava.top/products/' + id
+      + '" target="_blank" rel="noopener noreferrer external" data-external-purchase="'
+      + book + '">Купить за ' + price + ' ₽';
+    assert.ok(html.includes(expected), 'External purchase link missing for ' + book);
+  }
+  assert.match(html, /<script defer src="\/book-checkout\.js"><\/script>/);
+  assert.doesNotMatch(html, /data-checkout-book|id="checkout-dialog"|id="checkout-email"|id="payment-result"/);
+  assert.doesNotMatch(html, /Купить за 1 ₽/);
 });
 
-test('book orders use Cloudflare D1 only and do not include Neon dependencies', async () => {
-  const source = await readFile(new URL('../api/lava/order-tags.js', import.meta.url), 'utf8');
-  const pkg = await readFile(new URL('../package.json', import.meta.url), 'utf8');
-  assert.match(source, /BOOK_ORDERS_D1_URL/);
-  assert.match(source, /BOOK_ORDERS_D1_TOKEN/);
-  assert.match(source, /d1Query\('/);
-  assert.match(source, /\/lock|\/tagged|\/unlock/);
-  assert.doesNotMatch(source, /@neondatabase|BOOK_ORDERS_DATABASE_URL|neon\(/i);
-  assert.doesNotMatch(pkg, /neondatabase|neon/i);
+test('Telegram opens Lava product links externally, never in the Mini App', async () => {
+  const script = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
+  assert.match(script, /telegram\.openLink\(url, \{ try_instant_view: false \}\)/);
+  assert.match(script, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
+  assert.match(script, /telegram\.platform === 'unknown'/);
+  assert.doesNotMatch(script, /location\.assign|window\.location\.href\s*=|\/api\/lava\/checkout|\/api\/lava\/session/);
+});
+
+test('homepage no longer creates a book purchase session', async () => {
+  const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  assert.doesNotMatch(app, /\/api\/lava\/session/);
+  assert.match(app, /resource-button, \.footer-telegram-icon/);
+});
+
+test('high-resolution book cover files are preserved', async () => {
+  const first = await stat(new URL('../book-profit.webp', import.meta.url));
+  const second = await stat(new URL('../book-beginner.webp', import.meta.url));
+  assert.ok(first.size > 25_000);
+  assert.ok(second.size > 50_000);
+});
+
+test('direct book purchase controls contain no server credentials', async () => {
+  for (const path of ['book.html', 'book-checkout.js']) {
+    const source = await readFile(new URL('../' + path, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /LAVA_TOP_API_KEY|BOOK_ORDERS_D1_TOKEN|SENDPULSE_API_KEY/);
+  }
 });
