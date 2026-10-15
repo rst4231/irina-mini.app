@@ -78,7 +78,7 @@ test('book purchases can proceed without Telegram identity', async () => {
   const order = await readFile(new URL('../api/lava/order-tags.js', import.meta.url), 'utf8');
   const browser = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
   assert.doesNotMatch(checkout, /telegram_auth_required/);
-  assert.match(checkout, /contact\\?\\.id \\?\\? null/);
+  assert.ok(checkout.includes('contact?.id ?? null'));
   assert.match(order, /telegramId: String/);
   assert.match(order, /outcome: 'unlinked'/);
   assert.doesNotMatch(browser, /Не удалось подтвердить Telegram/);
