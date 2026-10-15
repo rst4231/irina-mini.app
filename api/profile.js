@@ -125,6 +125,7 @@ export default async function handler(req, res) {
   try {
     const contact = await getSendPulseContact(user.id, sendPulseApiKey);
     const tags = tagNames(contact?.tags);
+    const applicationRejected = [...tags].some((tag) => ['не одобрена', 'мусор'].includes(tag.replace(/\s+/g, ' ').trim().toLowerCase()));
     const hasPaymentTag = tags.has('Оплата');
     const receivedTerms = hasPaymentTag || tags.has('Получил условия');
     const applicationApproved = receivedTerms || tags.has('Одобрен');
@@ -135,6 +136,7 @@ export default async function handler(req, res) {
       sendPulseName: variableValue(contact?.variables, 'NAME'),
       applicationCompleted,
       applicationApproved,
+      applicationRejected,
       receivedTerms,
       hasPaymentTag,
     });
