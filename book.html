@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f1f6ff" />
+  <meta name="description" content="Как лить в плюс. Практическое руководство по арбитражу трафика: экономика запусков, офферы, креативы, тесты, оптимизация и масштабирование." />
+  <meta property="og:type" content="product" />
+  <meta property="og:title" content="Как лить в плюс. Арбитраж трафика" />
+  <meta property="og:description" content="Системное практическое руководство по арбитражу трафика. 690 ₽." />
+  <meta property="og:image" content="https://irina-miniapp.vercel.app/book-cover.webp" />
+  <meta property="og:url" content="https://irina-miniapp.vercel.app/book" />
+  <title>Как лить в плюс | Арбитраж трафика</title>
+  <style>
+    :root { color-scheme:light; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; background:#f1f6ff; color:#101d37; font-synthesis:none; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; min-width:320px; background: radial-gradient(ellipse 120% 450px at 50% -160px,#cbdfff,transparent),linear-gradient(180deg,#f1f6ff,#fafcff 58%,#f0f6ff); line-height:1.52; }
+    a { -webkit-tap-highlight-color:transparent; }
+    .page { width:min(100% - 28px,760px); margin:0 auto; padding:calc(12px + env(safe-area-inset-top,0px)) 0 calc(40px + env(safe-area-inset-bottom,0px)); }
+    .topbar { min-height:54px; display:flex; align-items:center; justify-content:center; position:relative; margin-bottom:20px; }
+    .home { display:inline-flex; justify-content:center; align-items:center; gap:8px; min-height:42px; padding:0 22px; border-radius:99px; background:rgba(255,255,255,.88); border:1px solid rgba(255,255,255,1); box-shadow:0 6px 24px rgba(47,85,134,.10); text-decoration:none; font-size:14px; font-weight:750; color:#294978; }
+    .home svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .hero { overflow:hidden; position:relative; border:1px solid #fff; border-radius:30px; background:rgba(255,255,255,.85); box-shadow:0 18px 52px rgba(44,83,141,.09); padding:18px 20px 27px; text-align:center; }
+    .hero::before { content:""; position:absolute; height:240px; inset:0 0 auto; background:linear-gradient(165deg,#e2edff 0%,rgba(255,255,255,0) 100%); pointer-events:none; }
+    .hero > * { position:relative; }
+    .eyebrow { display:inline-flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:.11em; font-weight:850; text-transform:uppercase; color:#2c70dc; background:#eaf3ff; border:1px solid #d6e6ff; border-radius:99px; padding:8px 12px; margin-bottom:14px; }
+    .cover-wrap { max-width:540px; margin:0 auto 12px; }
+    .cover { width:100%; height:auto; display:block; border-radius:17px; mix-blend-mode:multiply; }
+    h1 { font-size:clamp(29px,6.8vw,44px); letter-spacing:-.043em; line-height:1.12; max-width:650px; margin:3px auto 8px; font-weight:850; }
+    .hero-sub { font-size:16px; font-weight:650; color:#6480ab; margin:0 0 17px; }
+    .hero-intro { max-width:580px; margin:0 auto; font-size:15px; color:#344763; }
+    .hero-intro strong { color:#11244b; }
+    .section { margin-top:16px; padding:24px 22px; border-radius:26px; background:rgba(255,255,255,.90); border:1px solid #fff; box-shadow:0 8px 32px rgba(38,77,132,.055); }
+    .section h2 { margin:0 0 17px; font-size:21px; line-height:1.2; letter-spacing:-.035em; }
+    .topic-list { margin:0; padding:0; list-style:none; display:grid; gap:12px; }
+    .topic-list li { display:flex; gap:12px; font-size:14.5px; line-height:1.44; color:#2b3e5b; align-items:flex-start; }
+    .tick { flex:0 0 23px; height:23px; border-radius:8px; display:grid; place-items:center; color:#2276eb; background:#e9f2ff; font-size:16px; font-weight:800; }
+    .emphasis { margin:16px 0 0; color:#384a64; font-size:14.5px; }
+    .audience { margin:0; font-size:15px; color:#364b68; }
+    .kit { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+    .kit-item { padding:13px 13px 13px 14px; background:#f1f6ff; border:1px solid #e7efff; border-radius:15px; font-size:13.5px; color:#314563; font-weight:650; }
+    .kit-item::before { content:"✓"; display:inline-grid; place-items:center; vertical-align:middle; width:20px; height:20px; border-radius:50%; color:white; background:#2c7cef; margin-right:7px; font-size:12px; }
+    .checkout { margin-top:16px; border-radius:29px; padding:27px 22px; border:1px solid rgba(255,255,255,.55); background:linear-gradient(145deg,#183f92,#146ce7); box-shadow:0 18px 35px rgba(32,92,185,.22); color:white; text-align:center; }
+    .checkout h2 { font-size:22px; letter-spacing:-.035em; margin:0 0 6px; }
+    .checkout p { margin:0 auto 17px; color:#dfebff; max-width:490px; font-size:14px; }
+    .price { font-size:40px; font-weight:850; line-height:1.1; letter-spacing:-.05em; margin:8px 0 17px; }
+    .buy { width:100%; min-height:56px; border-radius:16px; display:flex; justify-content:center; align-items:center; gap:10px; color:#1556bb; font-size:17px; font-weight:850; background:white; text-decoration:none; box-shadow:0 6px 20px rgba(1,32,87,.18); transition:transform .16s,box-shadow .16s; }
+    .buy:hover { box-shadow:0 8px 23px rgba(1,32,87,.22); }
+    .buy:active { transform:scale(.984); }
+    .buy svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+    .payment-note { margin-top:11px; color:#cee1ff; font-size:12px; }
+    .copyright { color:#91a1ba; text-align:center; font-size:12px; padding:24px 0 0; }
+    @media (min-width:650px) { .hero { padding:28px 46px 34px; } .section { padding:30px 34px; } .checkout { padding:32px 44px; } .kit { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } .buy { transition:none; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <nav class="topbar" aria-label="Навигация"><a class="home" href="/" aria-label="Домой">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-7 9 7M5.5 9.5V20h13V9.5M9 20v-6h6v6"/></svg>Домой
+    </a></nav>
+    <article>
+      <header class="hero">
+        <span class="eyebrow">Практическое руководство</span>
+        <div class="cover-wrap"><img class="cover" src="/book-cover.webp" alt="Обложка книги «Как лить в плюс. Арбитраж трафика», Максим Смирнов" width="420" height="315" fetchpriority="high" /></div>
+        <h1>Как лить в плюс</h1>
+        <p class="hero-sub">Арбитраж трафика</p>
+        <p class="hero-intro"><strong>Наше новое руководство по арбитражу трафика.</strong> Мы собрали в одной книге системный подход к арбитражу трафика без воды, громких обещаний и поиска волшебной связки.</p>
+      </header>
+      <section class="section" aria-labelledby="inside-title">
+        <h2 id="inside-title">Что внутри книги</h2>
+        <ul class="topic-list">
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как считать реальную экономику запуска.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как выбирать оффер и гео.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как находить рабочие рекламные заходы.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как анализировать креативы и лендинги.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как правильно тестировать связки.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Когда отключать рекламу, а когда дать ей время.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Как оптимизировать и масштабировать кампании.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Почему дешёвый лид ещё не означает прибыль.</span></li>
+          <li><span class="tick" aria-hidden="true">✓</span><span>Какие ошибки чаще всего сливают бюджет новичков.</span></li>
+        </ul>
+        <p class="emphasis">Это не сборник общих советов. Это полноценное практическое руководство, основанное на нашем опыте работы с арбитражем трафика.</p>
+      </section>
+      <section class="section" aria-labelledby="audience-title">
+        <h2 id="audience-title">Кому подойдёт</h2>
+        <p class="audience">Тем, кто только начинает, уже запускал рекламу, но не вышел в стабильный плюс, или хочет привести свои запуски к понятной системе.</p>
+      </section>
+      <section class="section" aria-labelledby="tools-title">
+        <h2 id="tools-title">В конце книги вас ждут</h2>
+        <div class="kit">
+          <div class="kit-item">План действий на 30 дней</div>
+          <div class="kit-item">Рабочие чек-листы</div>
+          <div class="kit-item">Шаблоны для запуска</div>
+          <div class="kit-item">Разбор типичных проблем</div>
+          <div class="kit-item">Система поиска плюсовой связки</div>
+        </div>
+      </section>
+      <section class="checkout" aria-labelledby="buy-title">
+        <h2 id="buy-title">Забирайте руководство</h2>
+        <p>Используйте его как рабочую инструкцию перед каждым запуском.</p>
+        <div class="price" aria-label="Цена 690 рублей">690 ₽</div>
+        <a class="buy" href="https://app.lava.top/products/1a995492-be5d-4957-8dfb-29bb21d7f387" target="_blank" rel="noopener noreferrer">
+          Купить <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg>
+        </a>
+        <div class="payment-note">Оплата через Lava.top</div>
+      </section>
+    </article>
+    <footer class="copyright">© 2018–2026</footer>
+  </main>
+</body>
+</html>
