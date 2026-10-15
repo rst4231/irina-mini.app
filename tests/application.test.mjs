@@ -25,3 +25,16 @@ test('preserves application actions and URLs', () => {
   assert.equal(terms.action.url, 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f');
   assert.equal(terms.action.label, 'Посмотреть условия');
 });
+
+test('rejected applications override all other states and hide actions', () => {
+  for (const state of [
+    { completed: false, approved: false, receivedTerms: false },
+    { completed: true, approved: false, receivedTerms: false },
+    { completed: true, approved: true, receivedTerms: true },
+  ]) {
+    const view = getApplicationViewState({ ...state, rejected: true });
+    assert.equal(view.status, 'Анкета не одобрена');
+    assert.equal(view.tone, 'rejected');
+    assert.equal(view.action, null);
+  }
+});
