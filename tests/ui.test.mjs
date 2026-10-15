@@ -71,3 +71,12 @@ test('guide library is internal and both native pages disable zoom', async () =>
   assert.match(book, /book-profit\.webp/);
   assert.match(book, /book-beginner\.webp/);
 });
+
+test('book page has no Home navigation and keeps both external purchase buttons', async () => {
+  const book = await readFile(new URL('../book.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(book, /<nav\b[^>]*class="top"|class="home"|>Домой<|\.home\s*\{/);
+  assert.equal((book.match(/data-external-purchase=/g) || []).length, 2);
+  assert.equal((book.match(/target="_blank"/g) || []).length, 2);
+  assert.match(book, /<header class="intro">/);
+  assert.match(book, /\.intro \{ text-align:center; padding:0 14px 23px; \}/);
+});
