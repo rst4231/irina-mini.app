@@ -110,3 +110,11 @@ test('screenshot avatar WebP embeds are shown without star ratings when omitted'
   assert.match(js,/Number\.isInteger\(score\)/);
   assert.match(js,/star/);
 });
+
+test('review cards show names and star ratings without dates', async () => {
+  const js = await src('book-reviews.js');
+  assert.match(js, /review\.author_name/);
+  assert.match(js, /meta\.append\(el\('span','stars',stars\)\)/);
+  assert.doesNotMatch(js, /when\(review\.created_at\)|function when\(|Intl\.DateTimeFormat/);
+  assert.doesNotMatch(js, /review\.created_at/);
+});
