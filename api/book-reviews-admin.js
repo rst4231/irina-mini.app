@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       const result=await reviewStore('/pending');
       return send(res,200,{ok:true,reviews:result.reviews||[]});
     }
-    if (action==='approve'||action==='reject') {
+    if (action==='approve'||action==='delete') {
       const id=String(req.body?.id||'');
       if (!/^[a-f0-9-]{36}$/i.test(id))
         return send(res,400,{ok:false,error:'invalid_id'});
