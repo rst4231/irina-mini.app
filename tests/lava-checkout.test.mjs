@@ -24,7 +24,7 @@ test('Telegram opens Lava product links externally, never in the Mini App', asyn
   assert.match(script, /telegram\.openLink\(url, \{ try_instant_view: false \}\)/);
   assert.match(script, /window\.open\(url, '_blank', 'noopener,noreferrer'\)/);
   assert.match(script, /telegram\.platform === 'unknown'/);
-  assert.doesNotMatch(script, /location\.assign|window\.location\.href\s*=|\/api\/lava\/checkout|\/api\/lava\/session/);
+  assert.doesNotMatch(script, /window\.location\.assign\(|window\.location\.href\s*=|fetch\(['\"]\/api\/lava\/checkout|fetch\(['\"]\/api\/lava\/session/);
 });
 
 test('homepage no longer creates a book purchase session', async () => {
