@@ -87,11 +87,22 @@ test('reviews button navigates inside the current Mini App window', async () => 
   assert.notEqual(start, -1);
   const end = html.indexOf('</a>', start);
   const card = html.slice(start, end);
-  assert.ok(card.includes('href="https://teachercpa-miniapp.vercel.app"'));
+  assert.ok(card.includes('href="https://teachercpa-miniapp.vercel.app/reviews"'));
   assert.ok(card.includes('target="_self"'));
   assert.ok(!card.includes('target="_blank"'));
   const runtime = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
-  assert.equal(runtime.links.about, 'https://teachercpa-miniapp.vercel.app');
+  assert.equal(runtime.links.about, 'https://teachercpa-miniapp.vercel.app/reviews');
   const defaults = await readFile(new URL('../runtime-config.js', import.meta.url), 'utf8');
-  assert.ok(defaults.includes("about: 'https://teachercpa-miniapp.vercel.app'"));
+  assert.ok(defaults.includes("about: 'https://teachercpa-miniapp.vercel.app/reviews'"));
+});
+
+test('stale Telegram navigation cache does not replace fresh review URL', async () => {
+  const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  const defaults = await readFile(new URL('../runtime-config.js', import.meta.url), 'utf8');
+  const config = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
+  assert.match(app, /function isCurrentCachedConfig\(cached\)/);
+  assert.match(app, /Number\(cached\?\.config\?\.version\) >= DEFAULT_RUNTIME_CONFIG\.version/);
+  assert.equal((app.match(/if \(isCurrentCachedConfig\(cached\)\) applyRuntimeConfig\(cached\.config\);/g) || []).length, 2);
+  assert.equal(config.version, 2);
+  assert.match(defaults, /version: 2,/);
 });

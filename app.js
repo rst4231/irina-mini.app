@@ -445,9 +445,13 @@ function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   renderFreshness();
 }
 
+function isCurrentCachedConfig(cached) {
+  return Number(cached?.config?.version) >= DEFAULT_RUNTIME_CONFIG.version;
+}
+
 async function loadCachedConfig() {
   const cached = await getStoredJson(telegram, CONFIG_STORAGE_KEY);
-  if (cached?.config) applyRuntimeConfig(cached.config);
+  if (isCurrentCachedConfig(cached)) applyRuntimeConfig(cached.config);
 }
 
 async function loadRuntimeConfig({ silent = false } = {}) {
@@ -463,7 +467,7 @@ async function loadRuntimeConfig({ silent = false } = {}) {
   } catch {
     if (!silent) {
       const cached = await getStoredJson(telegram, CONFIG_STORAGE_KEY);
-      if (cached?.config) applyRuntimeConfig(cached.config);
+      if (isCurrentCachedConfig(cached)) applyRuntimeConfig(cached.config);
     }
   } finally {
     configLoadInFlight = false;
