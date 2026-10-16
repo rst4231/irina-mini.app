@@ -72,9 +72,16 @@ test('guide library is internal and both native pages disable zoom', async () =>
   assert.match(book, /book-beginner\.webp/);
 });
 
-test('book page has no Home navigation and keeps both external purchase buttons', async () => {
+test('book Home button appears only in Telegram context and leaves Lava checkout external', async () => {
   const book = await readFile(new URL('../book.html', import.meta.url), 'utf8');
-  assert.doesNotMatch(book, /<nav\b[^>]*class="top"|class="home"|>Домой<|\.home\s*\{/);
+  const checkout = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
+  const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  assert.match(book, /id="book-home-link"[^>]*href="\/"[^>]*target="_self"[^>]*hidden/);
+  assert.match(book, /\.book-home-link\[hidden\]/);
+  assert.match(checkout, /directMiniApp \|\| savedHome/);
+  assert.match(checkout, /home\.href = savedHome \|\| '\/' \+ telegramHash/);
+  assert.match(app, /if \(hasTelegramContext\)/);
+  assert.match(app, /irina_book_home_context/);
   assert.equal((book.match(/data-external-purchase=/g) || []).length, 2);
   assert.equal((book.match(/target="_blank"/g) || []).length, 2);
   assert.match(book, /<header class="intro">/);
