@@ -93,7 +93,7 @@
     const info = create('div', 'review-person-info');
     info.append(create('strong', '', review.author_name));
     const meta = create('div', 'review-meta');
-    meta.append(create('span', 'stars', '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating)));
+    meta.append(create('span', 'stars', Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5 ? '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) : 'Без оценки'));
     const date = formatDate(review.created_at);
     if (date) meta.append(document.createTextNode(' · ' + date));
     info.append(meta);
