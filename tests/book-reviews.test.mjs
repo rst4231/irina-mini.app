@@ -99,7 +99,7 @@ test('moderation is restricted to admin Telegram ID and offers publish or perman
   assert.match(api,/160628165/);
   assert.match(api,/action==='approve'\|\|action==='delete'/);
   assert.match(worker,/DELETE FROM book_reviews WHERE id=\?/);
-  assert.match(js,/isAdminCandidate && String/);
+  assert.match(js,/isAdminCandidate = isTelegram && String/);
   assert.match(js,/Опубликовать/);
   assert.match(js,/Удалить/);
   assert.match(js,/window\.confirm/);
