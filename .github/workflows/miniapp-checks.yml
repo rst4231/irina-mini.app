@@ -1,0 +1,21 @@
+name: Miniapp checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test
+      - run: |
+          node --check book-reviews.js
+          node --check api/book-reviews.js
+          node --check api/book-reviews-admin.js
+          node --check cloudflare/irina-book-reviews-d1.js
