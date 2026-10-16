@@ -16,12 +16,6 @@
     if (text !== undefined) node.textContent = text;
     return node;
   }
-  function when(iso) {
-    const stamp = Date.parse(iso?.includes('T') ? iso : String(iso).replace(' ', 'T') + 'Z');
-    return Number.isFinite(stamp)
-      ? new Intl.DateTimeFormat('ru-RU', {day:'numeric',month:'short',year:'numeric'}).format(stamp)
-      : '';
-  }
   function avatar(review) {
     const circle = el('div','review-avatar');
     circle.textContent = [...String(review.author_name || 'А')][0]?.toLocaleUpperCase('ru-RU') || 'А';
@@ -47,8 +41,6 @@
     const stars = Number.isInteger(score) && score >= 1 && score <= 5
       ? '★'.repeat(score) + '☆'.repeat(5-score) : '';
     if (stars) meta.append(el('span','stars',stars));
-    const date = when(review.created_at);
-    if (date) meta.append(document.createTextNode((stars ? ' · ' : '') + date));
     info.append(meta);
     header.append(info);
     card.append(header);
