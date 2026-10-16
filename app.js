@@ -556,6 +556,19 @@ applicationButton.addEventListener('click', (event) => {
   setTimeout(() => telegram.close(), 120);
 });
 
+// Remember the Telegram launch URL only when entering the book page from
+// this Mini App. Returning Home then restores the original Telegram context.
+bookButton?.addEventListener('click', () => {
+  try {
+    const key = 'irina_book_home_context';
+    if (hasTelegramContext) {
+      sessionStorage.setItem(key, JSON.stringify({url:window.location.href, savedAt:Date.now()}));
+    } else {
+      sessionStorage.removeItem(key);
+    }
+  } catch { /* Storage can be disabled in some embedded browsers. */ }
+});
+
 document.querySelectorAll('.resource-button, .footer-telegram-icon').forEach((element) => {
   element.addEventListener('click', () => hapticImpact('light'));
 });
