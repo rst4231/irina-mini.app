@@ -26,7 +26,7 @@
     const circle = el('div','review-avatar');
     circle.textContent = [...String(review.author_name || 'А')][0]?.toLocaleUpperCase('ru-RU') || 'А';
     const src = String(review.avatar_url || '');
-    if (/^(https:\/\/|\/review-avatars\/)/i.test(src)) {
+    if (/^(https:\/\/|\/review-avatars\/|data:image\/webp;base64,)/i.test(src)) {
       const photo = document.createElement('img');
       photo.src = src;
       photo.alt = '';
