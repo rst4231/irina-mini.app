@@ -25,11 +25,11 @@ test('reviews have 1–5 stars, split per book, and rating stickers on both cove
   assert.match(html, /data-rating-badge="profit"/);
   assert.match(html, /data-rating-badge="beginner"/);
   for (const i of [1,2,3,4,5]) assert.match(html, new RegExp('data-review-rating="' + i + '"'));
-  assert.match(html, /data-review-tab="profit"/);
-  assert.match(html, /data-review-tab="beginner"/);
-  assert.match(js, /data\.stats/);
+  assert.match(html, /data-book-reviews="profit"/);
+  assert.match(html, /data-book-reviews="beginner"/);
+  assert.match(js, /json\.stats/);
   assert.match(js, /data-rating-average/);
-  assert.match(js, /function renderRatings/);
+  assert.match(js, /function render\(/);
 });
 test('reviews collapse to three lines and can expand', async () => {
   const html = await src('book.html');
@@ -45,8 +45,8 @@ test('Telegram identity is verified server-side and names are optional in Mini A
   assert.match(api, /validateInitData\(initData, token\)/);
   assert.match(api, /safeTelegramPhoto\(user\.photo_url\)/);
   assert.match(js, /nameField\.hidden = true/);
-  assert.match(js, /nameInput\.required = false/);
-  assert.match(js, /isTelegram\?'':nameInput\.value/);
+  assert.match(js, /nameInput.required = false/);
+  assert.match(js, /isTelegram \? '' : nameInput.value/);
   assert.match(js, /review-avatar/);
 });
 test('negative submissions show moderation message; only Telegram admin can approve', async () => {
@@ -75,4 +75,38 @@ test('reviews only use dedicated D1 storage and do not alter external Lava purch
   assert.match(html, /href="https:\/\/app\.lava\.top\/products\/cfdceb95-cf9d-49d6-babc-736ade4edbc6"/);
   assert.match(html, /data-external-purchase="profit"/);
   assert.match(html, /data-external-purchase="beginner"/);
+});
+
+test('each book review list and form is directly below its own book card',async () => {
+  const html=await src('book.html');
+  const first=html.indexOf('<article class="book" aria-labelledby="profit-book-title">');
+  const firstEnd=html.indexOf('</article>',first);
+  const profit=html.indexOf('data-book-reviews="profit"');
+  const second=html.indexOf('<article class="book" aria-labelledby="beginner-book-title">');
+  const secondEnd=html.indexOf('</article>',second);
+  const beginner=html.indexOf('data-book-reviews="beginner"');
+  assert.ok(first>=0 && firstEnd>first && profit>firstEnd && profit<second);
+  assert.ok(second>first && secondEnd>second && beginner>secondEnd);
+  assert.equal((html.match(/data-reviews-list=/g)||[]).length,2);
+  assert.equal((html.match(/data-review-form=/g)||[]).length,2);
+  assert.doesNotMatch(html,/data-review-tab/);
+});
+test('moderation is restricted to admin Telegram ID and offers publish or permanent delete',async()=>{
+  const js=await src('book-reviews.js');
+  const api=await src('api/book-reviews-admin.js');
+  const worker=await src('cloudflare/irina-book-reviews-d1.js');
+  assert.match(api,/validateInitData/);
+  assert.match(api,/160628165/);
+  assert.match(api,/action==='approve'\|\|action==='delete'/);
+  assert.match(worker,/DELETE FROM book_reviews WHERE id=\?/);
+  assert.match(js,/isAdminCandidate = isTelegram && String/);
+  assert.match(js,/Опубликовать/);
+  assert.match(js,/Удалить/);
+  assert.match(js,/window\.confirm/);
+});
+test('screenshot avatar WebP embeds are shown without star ratings when omitted',async()=>{
+  const js=await src('book-reviews.js');
+  assert.match(js,/data:image\\\/webp;base64/);
+  assert.match(js,/Number\.isInteger\(score\)/);
+  assert.match(js,/star/);
 });
