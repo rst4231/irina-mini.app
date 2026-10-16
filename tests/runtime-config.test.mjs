@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { APP_RELEASE } from '../release.js';
 import { mergeRuntimeConfig } from '../runtime-config.js';
 
-test('internal release is v.11', () => {
-  assert.equal(APP_RELEASE, 'v.11');
+test('internal release is v.15', () => {
+  assert.equal(APP_RELEASE, 'v.15');
 });
 
 test('runtime config still supports feature switches and UI settings', () => {
@@ -32,6 +32,6 @@ test('runtime config still supports feature switches and UI settings', () => {
 
 test('runtime config rejects unsafe colors and invalid versions', () => {
   const config = mergeRuntimeConfig({ version: 0, ui: { accent: 'red' } });
-  assert.equal(config.version, 1);
+  assert.equal(config.version, 2);
   assert.equal(config.ui.accent, '#347ef4');
 });
