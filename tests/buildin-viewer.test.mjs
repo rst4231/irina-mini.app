@@ -13,7 +13,7 @@ test('Irina uses the current direct Teacher CPA Buildin viewer and keeps View Te
   assert.match(source, /@media \(min-width:700px\), \(hover:hover\) and \(pointer:fine\)/);
   assert.match(source, /height:calc\(100% \+ 286px\)!important/);
   assert.match(source, /buildin-viewer__action--home/);
-  assert.match(source, /buildin-viewer__action--back/);
+  assert.doesNotMatch(source, /buildin-viewer__action--back/);
   new vm.Script(source);
 });
 
