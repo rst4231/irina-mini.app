@@ -48,11 +48,11 @@ export default {
     return ok({ok:true,reviews:rows.results||[]});
    }
    if(path==='/moderate'){
-    if(!id.test(String(body.id||''))||!['approve','reject'].includes(body.action))
+    if(!id.test(String(body.id||''))||!['approve','delete'].includes(body.action))
       return ok({ok:false,error:'invalid_action'},400);
-    const status=body.action==='approve'?'published':'rejected';
-    const done=await db.prepare("UPDATE book_reviews SET status=?,moderated_at=datetime('now') WHERE id=? AND status='pending'")
-      .bind(status,body.id).run();
+    const done=body.action==='delete'
+      ? await db.prepare("DELETE FROM book_reviews WHERE id=? AND status='pending'").bind(body.id).run()
+      : await db.prepare("UPDATE book_reviews SET status='published',moderated_at=datetime('now') WHERE id=? AND status='pending'").bind(body.id).run();
     return ok({ok:true,updated:!!done.meta?.changes});
    }
    return ok({ok:false,error:'not_found'},404);
