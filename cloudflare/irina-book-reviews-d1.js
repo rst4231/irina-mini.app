@@ -23,7 +23,7 @@ export default {
     const offset=Math.max(0,Math.min(10000,Number(body.offset)||0));
     const [records,aggregates]=await Promise.all([
      db.prepare("SELECT id, book_key, rating, review_text, author_name, avatar_url, created_at FROM book_reviews WHERE status='published' ORDER BY created_at DESC, rowid DESC LIMIT 51 OFFSET ?").bind(offset).all(),
-     db.prepare("SELECT book_key, COUNT(*) AS count, ROUND(AVG(rating),1) AS average FROM book_reviews WHERE status IN ('published','pending') GROUP BY book_key").all(),
+     db.prepare("SELECT book_key, COUNT(rating) AS count, ROUND(AVG(rating),1) AS average FROM book_reviews WHERE status IN ('published','pending') AND rating IS NOT NULL GROUP BY book_key").all(),
     ]);
     const found=records.results||[];
     return ok({ok:true,reviews:found.slice(0,50),stats:aggregates.results||[],nextOffset:found.length>50?offset+50:null});
