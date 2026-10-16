@@ -32,6 +32,6 @@ test('runtime config still supports feature switches and UI settings', () => {
 
 test('runtime config rejects unsafe colors and invalid versions', () => {
   const config = mergeRuntimeConfig({ version: 0, ui: { accent: 'red' } });
-  assert.equal(config.version, 1);
+  assert.equal(config.version, 2);
   assert.equal(config.ui.accent, '#347ef4');
 });
