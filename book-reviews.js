@@ -33,7 +33,7 @@
   function item(review, forModeration = false) {
     const card = el('article','review-item');
     const header = el('div','review-person');
-    header.append(avatar(review));
+    if (review.avatar_url) header.append(avatar(review));
     const info = el('div','review-person-info');
     info.append(el('strong','',review.author_name || 'Читатель'));
     const meta = el('div','review-meta');
