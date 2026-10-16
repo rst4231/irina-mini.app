@@ -80,3 +80,18 @@ test('book page has no Home navigation and keeps both external purchase buttons'
   assert.match(book, /<header class="intro">/);
   assert.match(book, /\.intro \{ text-align:center; padding:0 14px 23px; \}/);
 });
+
+test('reviews button navigates inside the current Mini App window', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const start = html.indexOf('id="about-button"');
+  assert.notEqual(start, -1);
+  const end = html.indexOf('</a>', start);
+  const card = html.slice(start, end);
+  assert.ok(card.includes('href="https://teachercpa-miniapp.vercel.app"'));
+  assert.ok(card.includes('target="_self"'));
+  assert.ok(!card.includes('target="_blank"'));
+  const runtime = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
+  assert.equal(runtime.links.about, 'https://teachercpa-miniapp.vercel.app');
+  const defaults = await readFile(new URL('../runtime-config.js', import.meta.url), 'utf8');
+  assert.ok(defaults.includes("about: 'https://teachercpa-miniapp.vercel.app'"));
+});
