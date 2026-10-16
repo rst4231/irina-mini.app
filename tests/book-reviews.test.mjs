@@ -104,9 +104,19 @@ test('moderation is restricted to admin Telegram ID and offers publish or perman
   assert.match(js,/Удалить/);
   assert.match(js,/window\.confirm/);
 });
-test('screenshot avatar WebP embeds are shown without star ratings when omitted',async()=>{
+test('review avatars use the first letter even when a photo is supplied',async()=>{
   const js=await src('book-reviews.js');
-  assert.match(js,/data:image\\\/webp;base64/);
+  const source=js.slice(js.indexOf('  function avatar('),js.indexOf('  function item('));
+  const renderAvatar=new Function('el','review','document',source+'; return avatar(review);');
+  for(const name of ['Иван','Мария','Кирилл','Артур Ибрагимов']) {
+    const photos=[];
+    const avatar=renderAvatar((tag,className)=>({tag,className}),{author_name:name,avatar_url:'https://example.com/photo.webp'},{createElement(tag){photos.push(tag);return {addEventListener(){}};}});
+    assert.equal(avatar.textContent,name[0]);
+    assert.equal(avatar.className,'review-avatar');
+    assert.deepEqual(photos,[]);
+  }
+  assert.match(js,/header\.append\(avatar\(review\)\)/);
+  assert.doesNotMatch(js,/if \(review\.avatar_url\)/);
   assert.match(js,/Number\.isInteger\(score\)/);
   assert.match(js,/star/);
 });

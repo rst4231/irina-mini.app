@@ -18,22 +18,13 @@
   }
   function avatar(review) {
     const circle = el('div','review-avatar');
-    circle.textContent = [...String(review.author_name || 'А')][0]?.toLocaleUpperCase('ru-RU') || 'А';
-    const src = String(review.avatar_url || '');
-    if (/^(https:\/\/|\/review-avatars\/|data:image\/webp;base64,)/i.test(src)) {
-      const photo = document.createElement('img');
-      photo.src = src;
-      photo.alt = '';
-      photo.loading = 'lazy';
-      photo.referrerPolicy = 'no-referrer';
-      photo.addEventListener('load', () => circle.replaceChildren(photo), {once:true});
-    }
+    circle.textContent = [...String(review.author_name || '').trim()][0]?.toLocaleUpperCase('ru-RU') || 'Ч';
     return circle;
   }
   function item(review, forModeration = false) {
     const card = el('article','review-item');
     const header = el('div','review-person');
-    if (review.avatar_url) header.append(avatar(review));
+    header.append(avatar(review));
     const info = el('div','review-person-info');
     info.append(el('strong','',review.author_name || 'Читатель'));
     const meta = el('div','review-meta');
