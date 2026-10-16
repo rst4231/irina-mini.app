@@ -23,6 +23,7 @@
     h1 { font-weight:850; font-size:clamp(28px,6.5vw,43px); letter-spacing:-.045em; line-height:1.09; max-width:610px; margin:12px auto 12px; }
     .intro p { color:#677b9b; font-size:15px; max-width:570px; margin:0 auto; }
     .book-grid { display:grid; gap:18px; }
+    .book-unit {min-width:0;display:flex;flex-direction:column;gap:12px}
     .book { background:rgba(255,255,255,.94); border:1px solid #fff; border-radius:28px; padding:16px 17px 18px; box-shadow:0 16px 44px rgba(44,78,127,.085); overflow:hidden; min-width:0; }
     .cover-bg { position:relative; background:linear-gradient(145deg,#e8f0fb,#f8fbff); overflow:hidden; border-radius:19px; }
     .cover { display:block; width:100%; height:auto; object-fit:cover; aspect-ratio:4 / 3; }
@@ -43,21 +44,24 @@
     .buy svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
     .payment { color:#8293ab; font-size:11.5px; text-align:center; margin:0; }
     .footer { padding-top:23px; text-align:center; color:#8999b2; font-size:12px; }
-    @media(min-width:740px){.book-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}.book{display:flex;flex-direction:column;padding:18px 20px 22px}.book .purchase{margin-top:auto;padding-top:22px}.cover {aspect-ratio:4 / 3}.book h2 {font-size:25px}.book p{font-size:14.5px}}
+    @media(min-width:740px){.book-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.book{display:flex;flex-direction:column;padding:18px 20px 22px}.book .purchase{margin-top:auto;padding-top:22px}.cover {aspect-ratio:4 / 3}.book h2 {font-size:25px}.book p{font-size:14.5px}}
     @media(prefers-reduced-motion:reduce){.buy{transition:none}}
 
     .book-rating { position:absolute;right:10px;top:10px;z-index:2;display:flex;align-items:center;gap:5px;padding:7px 10px;border:1px solid rgba(255,255,255,.8);border-radius:12px;background:rgba(255,255,255,.95);box-shadow:0 4px 17px #142f5420;color:#253d63;font-size:13px;font-weight:800;backdrop-filter:blur(10px); }
     .book-rating[hidden], .reviews-message[hidden], .review-name-field[hidden], .review-more[hidden], .reviews-admin[hidden] {display:none!important}
     .book-rating .rating-star {color:#ffb020;font-size:16px}
     .book-rating .rating-count {color:#6982a7;font-weight:650;font-size:11px}
-    .book-reviews {margin-top:24px;padding:21px 18px 23px;border:1px solid #e5effe;background:rgba(255,255,255,.95);border-radius:25px;box-shadow:0 10px 32px #335a8a12}
-    .book-reviews h2 {margin:0 0 7px;font-size:23px;letter-spacing:-.04em;line-height:1.2}
+    .book-reviews {margin-top:0;padding:21px 18px 23px;border:1px solid #e5effe;background:rgba(255,255,255,.95);border-radius:25px;box-shadow:0 10px 32px #335a8a12}
+    .book-reviews h2, .book-reviews h3.book-reviews-title {margin:0 0 7px;font-size:23px;letter-spacing:-.04em;line-height:1.2}
     .book-reviews>p {margin:0 0 18px;color:#667c9b;font-size:13px}
     .review-tabs {display:flex;gap:7px;margin:0 0 18px}
     .review-tab {flex:1;min-width:0;padding:10px 8px;border:1px solid #dce8fa;border-radius:13px;background:#f7faff;color:#456084;font-size:12px;font-weight:780;cursor:pointer}
     .review-tab[aria-selected="true"] {background:#e7f1ff;border-color:#8bb7ff;color:#145cc3}
+    .review-form-toggle {margin-top:14px;padding-top:10px;border-top:1px solid #e5ecf8}
+    .review-form-toggle summary {font-size:14px;font-weight:800;color:#2369d4;cursor:pointer;padding:9px 0}
     .review-form {padding:16px;border:1px solid #e5eeff;border-radius:19px;background:#f8fbff}
     .review-form h3 {font-size:16px;margin:0 0 10px}
+    .review-stars-label {display:block;font-size:13px;font-weight:750;color:#304969;margin:11px 0 5px}
     .review-form label {display:block;font-size:13px;font-weight:750;color:#304969;margin:11px 0 5px}
     .review-form input:not([type="hidden"]), .review-form textarea {width:100%;padding:11px 12px;border:1px solid #d4e3f6;border-radius:12px;font:inherit;font-size:14px;color:#182d4b;background:#fff}
     .review-form textarea {min-height:110px;resize:vertical}
@@ -84,13 +88,14 @@
     .review-more {margin-top:7px;border:0;background:transparent;color:#246ee8;font-size:12px;font-weight:750;padding:4px 0;cursor:pointer}
     .reviews-empty {font-size:13px;color:#8393ac}
     .reviews-more[hidden] {display:none!important}
+    .reviews-more[hidden] {display:none!important}
     .reviews-more {display:block;margin:16px auto 0;border:1px solid #c8daf5;border-radius:12px;padding:10px 20px;background:#f3f8ff;color:#2863bb;cursor:pointer}
     .reviews-admin {margin-top:16px;padding:14px;border-radius:16px;border:1px solid #d8e6f8}
     .reviews-admin h3 {font-size:15px;margin:0 0 10px}
     .reviews-admin-item {padding:12px;border-top:1px solid #e8eef7}
     .reviews-admin-item p {white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
     .reviews-admin-item button {padding:7px 10px;border-radius:8px;border:1px solid #bad2f5;background:#e7f1ff;color:#1758b0;margin-right:8px;cursor:pointer}
-    @media(min-width:740px) {.book-reviews{padding:27px}.reviews-columns{display:grid;grid-template-columns:1fr 1fr;gap:20px}.review-list{margin-top:0}}
+    @media(min-width:740px) {.book-reviews{padding:18px}.review-list{margin-top:0}}
   </style>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script defer src="/zoom-lock.js"></script>
@@ -103,6 +108,7 @@
       <p>Две практические книги, которые помогут разобраться в арбитраже, выстроить систему запусков и работать на результат.</p>
     </header>
     <div class="book-grid">
+      <div class="book-unit">
       <article class="book" aria-labelledby="profit-book-title">
         <div class="cover-bg"><div class="book-rating" data-rating-badge="profit" hidden aria-label="Рейтинг книги"><span class="rating-star">★</span><span data-rating-average></span><span class="rating-count" data-rating-count></span></div><img class="cover" src="/book-profit.webp" width="420" height="315" alt="Обложка книги «Как лить в плюс. Арбитраж трафика»" fetchpriority="high" /></div>
         <h2 id="profit-book-title">Как лить в плюс <small>Арбитраж трафика</small></h2>
@@ -130,6 +136,33 @@
           <a class="buy" href="https://app.lava.top/products/1a995492-be5d-4957-8dfb-29bb21d7f387" target="_blank" rel="noopener noreferrer external" data-external-purchase="profit">Перейти к покупке <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
         </div>
       </article>
+        <section class="book-reviews" data-book-reviews="profit" aria-label="Отзывы: Как лить в плюс">
+          <h3 class="book-reviews-title">Отзывы о книге</h3>
+          <div class="review-list" data-reviews-list="profit" aria-live="polite"><p class="reviews-empty">Загружаем отзывы…</p></div>
+          <button class="reviews-more" type="button" data-reviews-more="profit" hidden>Показать ещё</button>
+          <details class="review-form-toggle">
+            <summary>Оставить отзыв</summary>
+            <form class="review-form" data-review-form="profit">
+              <div class="review-name-field" data-review-name-field>
+                <label>Ваше имя <input name="name" maxlength="60" minlength="2" placeholder="Как вас зовут?" autocomplete="name" required /></label>
+              </div>
+              <div class="review-stars-label">Ваша оценка</div>
+              <div class="review-stars" role="radiogroup" aria-label="Оценка книги от 1 до 5 звёзд">
+                <button class="review-star" type="button" role="radio" aria-label="1 звезда" aria-checked="false" data-review-rating="1">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="2 звезды" aria-checked="false" data-review-rating="2">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="3 звезды" aria-checked="false" data-review-rating="3">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="4 звезды" aria-checked="false" data-review-rating="4">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="5 звёзд" aria-checked="false" data-review-rating="5">★</button>
+              </div>
+              <label>Ваш отзыв <textarea name="reviewText" maxlength="2000" minlength="10" placeholder="Что понравилось и что можно улучшить?" required></textarea></label>
+              <input type="hidden" name="website" value="" />
+              <button class="review-submit" type="submit">Отправить отзыв</button>
+              <p class="reviews-message" data-review-message role="status" aria-live="polite" hidden></p>
+            </form>
+          </details>
+        </section>
+      </div>
+      <div class="book-unit">
       <article class="book" aria-labelledby="beginner-book-title">
         <div class="cover-bg"><div class="book-rating" data-rating-badge="beginner" hidden aria-label="Рейтинг книги"><span class="rating-star">★</span><span data-rating-average></span><span class="rating-count" data-rating-count></span></div><img class="cover" src="/book-beginner.webp" width="480" height="360" alt="Обложка книги «Арбитраж трафика. Пошаговое руководство от А до Я»" loading="lazy" /></div>
         <h2 id="beginner-book-title">Арбитраж трафика <small>Пошаговое руководство от А до Я</small></h2>
@@ -149,47 +182,37 @@
           <a class="buy" href="https://app.lava.top/products/cfdceb95-cf9d-49d6-babc-736ade4edbc6" target="_blank" rel="noopener noreferrer external" data-external-purchase="beginner">Перейти к покупке <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
         </div>
       </article>
+        <section class="book-reviews" data-book-reviews="beginner" aria-label="Отзывы: Арбитраж трафика от А до Я">
+          <h3 class="book-reviews-title">Отзывы о книге</h3>
+          <div class="review-list" data-reviews-list="beginner" aria-live="polite"><p class="reviews-empty">Загружаем отзывы…</p></div>
+          <button class="reviews-more" type="button" data-reviews-more="beginner" hidden>Показать ещё</button>
+          <details class="review-form-toggle">
+            <summary>Оставить отзыв</summary>
+            <form class="review-form" data-review-form="beginner">
+              <div class="review-name-field" data-review-name-field>
+                <label>Ваше имя <input name="name" maxlength="60" minlength="2" placeholder="Как вас зовут?" autocomplete="name" required /></label>
+              </div>
+              <div class="review-stars-label">Ваша оценка</div>
+              <div class="review-stars" role="radiogroup" aria-label="Оценка книги от 1 до 5 звёзд">
+                <button class="review-star" type="button" role="radio" aria-label="1 звезда" aria-checked="false" data-review-rating="1">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="2 звезды" aria-checked="false" data-review-rating="2">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="3 звезды" aria-checked="false" data-review-rating="3">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="4 звезды" aria-checked="false" data-review-rating="4">★</button>
+                <button class="review-star" type="button" role="radio" aria-label="5 звёзд" aria-checked="false" data-review-rating="5">★</button>
+              </div>
+              <label>Ваш отзыв <textarea name="reviewText" maxlength="2000" minlength="10" placeholder="Что понравилось и что можно улучшить?" required></textarea></label>
+              <input type="hidden" name="website" value="" />
+              <button class="review-submit" type="submit">Отправить отзыв</button>
+              <p class="reviews-message" data-review-message role="status" aria-live="polite" hidden></p>
+            </form>
+          </details>
+        </section>
+      </div>
     </div>
 
-    <section id="book-reviews" class="book-reviews" aria-labelledby="book-reviews-title">
-      <h2 id="book-reviews-title">Отзывы о руководствах</h2>
-      <p>Выберите книгу, поставьте оценку и поделитесь впечатлением.</p>
-      <div class="review-tabs" role="tablist" aria-label="Отзывы по книгам">
-        <button class="review-tab" type="button" role="tab" id="review-tab-profit" data-review-tab="profit" aria-selected="true">Как лить в плюс</button>
-        <button class="review-tab" type="button" role="tab" id="review-tab-beginner" data-review-tab="beginner" aria-selected="false">От А до Я</button>
-      </div>
-      <div class="reviews-columns">
-        <div class="review-form">
-          <h3>Оставить отзыв</h3>
-          <form id="book-review-form">
-            <div class="review-name-field" id="review-name-field">
-              <label for="review-name">Ваше имя</label>
-              <input id="review-name" name="name" maxlength="60" minlength="2" placeholder="Как вас зовут?" autocomplete="name" required />
-            </div>
-            <label id="review-rating-label">Ваша оценка</label>
-            <div class="review-stars" role="radiogroup" aria-labelledby="review-rating-label">
-              <button class="review-star" type="button" role="radio" aria-label="1 звезда" aria-checked="false" data-review-rating="1">★</button>
-              <button class="review-star" type="button" role="radio" aria-label="2 звезды" aria-checked="false" data-review-rating="2">★</button>
-              <button class="review-star" type="button" role="radio" aria-label="3 звезды" aria-checked="false" data-review-rating="3">★</button>
-              <button class="review-star" type="button" role="radio" aria-label="4 звезды" aria-checked="false" data-review-rating="4">★</button>
-              <button class="review-star" type="button" role="radio" aria-label="5 звёзд" aria-checked="false" data-review-rating="5">★</button>
-            </div>
-            <label for="review-text">Ваш отзыв</label>
-            <textarea id="review-text" name="reviewText" maxlength="2000" minlength="10" placeholder="Что понравилось и что можно улучшить?" required></textarea>
-            <input type="hidden" id="review-website" name="website" value="" />
-            <button class="review-submit" type="submit" id="review-submit">Опубликовать отзыв</button>
-            <p id="reviews-message" class="reviews-message" role="status" aria-live="polite" hidden></p>
-          </form>
-        </div>
-        <div>
-          <div id="reviews-list" class="review-list" aria-live="polite"><p class="reviews-empty">Загружаем отзывы…</p></div>
-          <button id="reviews-more" class="reviews-more" type="button" hidden>Показать ещё</button>
-        </div>
-      </div>
-      <div id="reviews-admin" class="reviews-admin" hidden>
-        <h3>Отзывы на модерации</h3>
-        <div id="reviews-admin-list"></div>
-      </div>
+    <section id="reviews-admin" class="reviews-admin" hidden>
+      <h2>Отзывы на модерации</h2>
+      <div id="reviews-admin-list"></div>
     </section>
     <footer class="footer">© 2018–2026</footer>
   </main>
