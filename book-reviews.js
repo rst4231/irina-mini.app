@@ -1,250 +1,223 @@
 (() => {
-  const root = document.getElementById('book-reviews');
-  if (!root) return;
-  const form = document.getElementById('book-review-form');
-  const nameField = document.getElementById('review-name-field');
-  const nameInput = document.getElementById('review-name');
-  const textInput = document.getElementById('review-text');
-  const message = document.getElementById('reviews-message');
-  const submit = document.getElementById('review-submit');
-  const list = document.getElementById('reviews-list');
-  const more = document.getElementById('reviews-more');
+  const panels = [...document.querySelectorAll('[data-book-reviews]')];
+  if (!panels.length) return;
+  const telegram = window.Telegram?.WebApp;
+  const telegramUser = telegram?.initData && telegram?.initDataUnsafe?.user;
+  const isTelegram = Boolean(telegramUser?.id && telegram.initData);
+  const isAdminCandidate = isTelegram && String(telegramUser.id) === '160628165';
   const admin = document.getElementById('reviews-admin');
   const adminList = document.getElementById('reviews-admin-list');
-  const tabs = [...root.querySelectorAll('[data-review-tab]')];
-  const stars = [...root.querySelectorAll('[data-review-rating]')];
-  const telegram = window.Telegram?.WebApp;
-  // Display-only identification. The backend verifies the signed launch data.
-  const telegramUser = telegram?.initData && telegram?.initDataUnsafe?.user;
-  const isTelegram = Boolean(telegramUser?.id && telegram?.initData);
-  let book = 'profit';
-  let rating = 0;
-  let reviews = [];
-  let allStats = [];
-  let nextOffset = null;
-  let busy = false;
-  if (isTelegram) {
-    nameField.hidden = true;
-    nameInput.required = false;
-  }
-  const btnBook = new URLSearchParams(location.search).get('book');
-  if (btnBook === 'beginner') book = 'beginner';
+  const state = {reviews: [], stats: [], nextOffset: null, loading: false};
+  const ratingValues = new Map();
 
-  function notice(value, failed = false) {
-    message.textContent = value;
-    message.style.background = failed ? '#fff0f0' : '';
-    message.style.color = failed ? '#b12f44' : '';
-    message.hidden = !value;
+  function el(tag, className = '', text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
   }
-  function updateStars() {
-    for (const star of stars) {
-      const n = Number(star.dataset.reviewRating);
-      star.classList.toggle('is-selected', n <= rating);
-      star.setAttribute('aria-checked', String(n === rating));
-    }
-  }
-  for (const star of stars) {
-    star.addEventListener('click', () => {
-      rating = Number(star.dataset.reviewRating);
-      updateStars();
-      notice('');
-    });
-    star.addEventListener('keydown', event => {
-      if (!['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
-      event.preventDefault();
-      const index = Number(star.dataset.reviewRating);
-      rating = Math.max(1, Math.min(5, index + (event.key === 'ArrowLeft' || event.key === 'ArrowDown' ? -1 : 1)));
-      updateStars();
-      stars[rating - 1].focus();
-    });
-  }
-  function create(tag, cls, content) {
-    const el = document.createElement(tag);
-    if (cls) el.className = cls;
-    if (content !== undefined) el.textContent = content;
-    return el;
-  }
-  function formatDate(iso) {
-    const parsed = Date.parse(iso?.includes('T') ? iso : String(iso).replace(' ', 'T') + 'Z');
-    return Number.isFinite(parsed)
-      ? new Intl.DateTimeFormat('ru-RU', { day:'numeric', month:'short', year:'numeric' }).format(parsed)
+  function when(iso) {
+    const stamp = Date.parse(iso?.includes('T') ? iso : String(iso).replace(' ', 'T') + 'Z');
+    return Number.isFinite(stamp)
+      ? new Intl.DateTimeFormat('ru-RU', {day:'numeric',month:'short',year:'numeric'}).format(stamp)
       : '';
   }
-  function avatar(author) {
-    const circle = create('div', 'review-avatar');
-    const initial = [...(String(author.author_name || '').trim())][0]?.toLocaleUpperCase('ru-RU') || 'А';
-    circle.textContent = initial;
-    if (author.avatar_url && /^https:\/\//i.test(author.avatar_url)) {
+  function avatar(review) {
+    const circle = el('div','review-avatar');
+    circle.textContent = [...String(review.author_name || 'А')][0]?.toLocaleUpperCase('ru-RU') || 'А';
+    const src = String(review.avatar_url || '');
+    if (/^(https:\/\/|\/review-avatars\/)/i.test(src)) {
       const photo = document.createElement('img');
-      photo.src = author.avatar_url;
+      photo.src = src;
       photo.alt = '';
       photo.loading = 'lazy';
       photo.referrerPolicy = 'no-referrer';
-      photo.addEventListener('load', () => {
-        circle.replaceChildren(photo);
-      }, {once:true});
+      photo.addEventListener('load', () => circle.replaceChildren(photo), {once:true});
     }
     return circle;
   }
-  function item(review, moderation = false) {
-    const card = create('article', 'review-item');
-    const head = create('div', 'review-person');
-    head.append(avatar(review));
-    const info = create('div', 'review-person-info');
-    info.append(create('strong', '', review.author_name));
-    const meta = create('div', 'review-meta');
-    meta.append(create('span', 'stars', Number.isInteger(review.rating) && review.rating >= 1 && review.rating <= 5 ? '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating) : 'Без оценки'));
-    const date = formatDate(review.created_at);
-    if (date) meta.append(document.createTextNode(' · ' + date));
+  function item(review, forModeration = false) {
+    const card = el('article','review-item');
+    const header = el('div','review-person');
+    header.append(avatar(review));
+    const info = el('div','review-person-info');
+    info.append(el('strong','',review.author_name || 'Читатель'));
+    const meta = el('div','review-meta');
+    const score = Number(review.rating);
+    const stars = Number.isInteger(score) && score >= 1 && score <= 5
+      ? '★'.repeat(score) + '☆'.repeat(5-score) : '';
+    if (stars) meta.append(el('span','stars',stars));
+    const date = when(review.created_at);
+    if (date) meta.append(document.createTextNode((stars ? ' · ' : '') + date));
     info.append(meta);
-    head.append(info);
-    card.append(head);
-    const txt = create('p', 'review-text is-collapsed', review.review_text);
-    card.append(txt);
-    const expand = create('button', 'review-more', 'Читать полностью');
-    expand.type = 'button';
-    card.append(expand);
+    header.append(info);
+    card.append(header);
+    const paragraph = el('p','review-text is-collapsed',review.review_text);
+    card.append(paragraph);
+    const toggle = el('button','review-more','Читать полностью');
+    toggle.type = 'button';
+    toggle.hidden = true;
+    card.append(toggle);
     requestAnimationFrame(() => {
-      if (txt.scrollHeight <= txt.clientHeight + 3) {
-        expand.hidden = true;
-      }
+      if (paragraph.scrollHeight > paragraph.clientHeight + 3) toggle.hidden = false;
     });
-    expand.addEventListener('click', () => {
-      const collapsed = txt.classList.toggle('is-collapsed');
-      expand.textContent = collapsed ? 'Читать полностью' : 'Свернуть';
+    toggle.addEventListener('click', () => {
+      const nowCollapsed = paragraph.classList.toggle('is-collapsed');
+      toggle.textContent = nowCollapsed ? 'Читать полностью' : 'Свернуть';
     });
-    if (moderation) {
-      const actions = create('div', 'review-actions');
-      const approve = create('button', '', 'Одобрить');
-      const reject = create('button', '', 'Отклонить');
-      approve.type = reject.type = 'button';
-      approve.addEventListener('click', () => moderate(review.id, 'approve'));
-      reject.addEventListener('click', () => moderate(review.id, 'reject'));
-      actions.append(approve, reject);
+    if (forModeration) {
+      const actions = el('div','review-actions');
+      const publish = el('button','','Опубликовать');
+      const remove = el('button','','Удалить');
+      publish.type = remove.type = 'button';
+      publish.addEventListener('click', () => moderate(review.id,'approve'));
+      remove.addEventListener('click', () => {
+        if (window.confirm('Удалить отзыв окончательно?')) moderate(review.id,'delete');
+      });
+      actions.append(publish,remove);
       card.append(actions);
     }
     return card;
   }
-  function renderList() {
-    list.replaceChildren();
-    const selected = reviews.filter(v => v.book_key === book);
-    if (!selected.length) {
-      list.append(create('p', 'reviews-empty', 'Пока нет отзывов об этой книге. Вы можете оставить первый.'));
-    } else selected.forEach(review => list.append(item(review)));
-    more.hidden = nextOffset === null;
-  }
-  function renderRatings() {
-    for (const key of ['profit','beginner']) {
-      const badge = document.querySelector('[data-rating-badge="' + key + '"]');
-      if (!badge) continue;
-      const stats = allStats.find(v => v.book_key === key);
-      const count = Number(stats?.count || 0);
-      badge.hidden = count < 1;
-      if (count > 0) {
-        badge.querySelector('[data-rating-average]').textContent = Number(stats.average).toFixed(1).replace('.', ',');
-        badge.querySelector('[data-rating-count]').textContent = '(' + count + ')';
-        badge.setAttribute('aria-label', 'Средняя оценка ' + Number(stats.average).toFixed(1) + ' из 5 по ' + count + ' оценкам');
-      }
-    }
-  }
-  function selectBook(value) {
-    book = value;
-    tabs.forEach(t => t.setAttribute('aria-selected', String(t.dataset.reviewTab === value)));
-    notice('');
-    renderList();
-  }
-  tabs.forEach(tab => tab.addEventListener('click', () => selectBook(tab.dataset.reviewTab)));
-  async function loadReviews(append = false) {
-    const offset = append ? nextOffset : 0;
-    if (offset === null) return;
-    const response = await fetch('/api/book-reviews?offset=' + offset, {cache:'no-store'});
-    const data = await response.json();
-    if (!data.ok) throw new Error('reviews_unavailable');
-    reviews = append ? [...reviews, ...(data.reviews || [])] : (data.reviews || []);
-    allStats = data.stats || [];
-    nextOffset = data.nextOffset == null ? null : Number(data.nextOffset);
-    renderRatings();
-    renderList();
-  }
-  more.addEventListener('click', async () => {
-    more.disabled = true;
-    try { await loadReviews(true); } catch { notice('Не удалось загрузить отзывы.', true); }
-    finally { more.disabled = false; }
-  });
-  form.addEventListener('submit', async event => {
-    event.preventDefault();
-    if (busy) return;
-    if (!rating) return notice('Выберите оценку от 1 до 5 звёзд.', true);
-    if (!form.reportValidity()) return;
-    busy = true;
-    submit.disabled = true;
-    notice('');
-    try {
-      const response = await fetch('/api/book-reviews', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          bookKey:book, rating, text:textInput.value, name:isTelegram?'':nameInput.value,
-          initData:isTelegram ? telegram.initData : '',
-          website:document.getElementById('review-website').value,
-        }),
-        cache:'no-store',
-      });
-      const result = await response.json();
-      if (!response.ok || !result.ok) throw new Error(result.message || 'Не удалось отправить отзыв.');
-      textInput.value = '';
-      rating = 0;
-      updateStars();
-      notice(result.status === 'pending'
-        ? 'Ваш отзыв отправлен на модерацию.'
-        : 'Спасибо! Отзыв опубликован.');
-      if (result.status === 'published') await loadReviews();
-    } catch (error) {
-      notice(error?.message || 'Не удалось отправить отзыв.', true);
-    } finally {
-      busy = false;
-      submit.disabled = false;
-    }
-  });
-  async function loadAdmin() {
-    if (!isTelegram || String(telegramUser.id) !== '160628165') return;
-    try {
-      const response = await fetch('/api/book-reviews-admin', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({action:'list',initData:telegram.initData}),
-        cache:'no-store',
-      });
-      const result = await response.json();
-      if (!result.ok) return;
-      admin.hidden = false;
-      adminList.replaceChildren();
-      if (!result.reviews.length) {
-        adminList.append(create('p','reviews-empty','Нет отзывов на модерации.'));
-      } else {
-        for (const review of result.reviews) {
-          const itemWrapper = create('div','reviews-admin-item');
-          itemWrapper.append(create('strong','', review.book_key === 'profit' ? 'Как лить в плюс' : 'От А до Я'));
-          itemWrapper.append(item(review,true));
-          adminList.append(itemWrapper);
+  function render() {
+    for (const panel of panels) {
+      const book = panel.dataset.bookReviews;
+      const list = panel.querySelector('[data-reviews-list]');
+      list.replaceChildren();
+      const reviews = state.reviews.filter(r => r.book_key === book);
+      if (!reviews.length) list.append(el('p','reviews-empty','Пока нет отзывов об этой книге.'));
+      else reviews.forEach(r => list.append(item(r)));
+      panel.querySelector('[data-reviews-more]').hidden = state.nextOffset == null;
+      const badge = document.querySelector('[data-rating-badge="' + book + '"]');
+      if (badge) {
+        const agg = state.stats.find(v => v.book_key === book);
+        const count = Number(agg?.count || 0);
+        badge.hidden = count === 0;
+        if (count) {
+          badge.querySelector('[data-rating-average]').textContent = Number(agg.average).toFixed(1).replace('.',',');
+          badge.querySelector('[data-rating-count]').textContent = '(' + count + ')';
+          badge.setAttribute('aria-label','Средний рейтинг ' + Number(agg.average).toFixed(1) + ' из 5. Оценок: ' + count);
         }
       }
-    } catch {}
+    }
   }
-  async function moderate(id, action) {
-    if (!isTelegram || String(telegramUser.id) !== '160628165') return;
+  async function loadReviews(more = false) {
+    if (state.loading || (more && state.nextOffset == null)) return;
+    state.loading = true;
+    try {
+      const offset = more ? state.nextOffset : 0;
+      const response = await fetch('/api/book-reviews?offset=' + offset,{cache:'no-store'});
+      const json = await response.json();
+      if (!response.ok || !json.ok) throw new Error('reviews_unavailable');
+      state.reviews = more ? [...state.reviews,...(json.reviews || [])] : (json.reviews || []);
+      state.stats = json.stats || [];
+      state.nextOffset = json.nextOffset == null ? null : Number(json.nextOffset);
+      render();
+    } finally {
+      state.loading = false;
+    }
+  }
+  function message(form, text, failed = false) {
+    const node = form.querySelector('[data-review-message]');
+    node.textContent = text;
+    node.hidden = !text;
+    node.style.color = failed ? '#b12f44' : '';
+    node.style.background = failed ? '#fff0f0' : '';
+  }
+  for (const panel of panels) {
+    const book = panel.dataset.bookReviews;
+    const form = panel.querySelector('[data-review-form]');
+    const nameField = form.querySelector('[data-review-name-field]');
+    const nameInput = form.elements.name;
+    if (isTelegram) { nameField.hidden = true; nameInput.required = false; }
+    const buttons = [...form.querySelectorAll('[data-review-rating]')];
+    ratingValues.set(book,0);
+    function selectStar(value) {
+      ratingValues.set(book,value);
+      buttons.forEach(button => {
+        const n = Number(button.dataset.reviewRating);
+        button.classList.toggle('is-selected',n <= value);
+        button.setAttribute('aria-checked',String(n === value));
+      });
+    }
+    for (const button of buttons) {
+      button.addEventListener('click',() => {selectStar(Number(button.dataset.reviewRating));message(form,'');});
+      button.addEventListener('keydown',event => {
+        if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)) return;
+        event.preventDefault();
+        const delta = ['ArrowLeft','ArrowDown'].includes(event.key) ? -1 : 1;
+        const value = Math.max(1,Math.min(5,Number(button.dataset.reviewRating)+delta));
+        selectStar(value);
+        buttons[value-1].focus();
+      });
+    }
+    panel.querySelector('[data-reviews-more]').addEventListener('click',() => {
+      loadReviews(true).catch(() => message(form,'Не удалось загрузить отзывы.',true));
+    });
+    form.addEventListener('submit',async event => {
+      event.preventDefault();
+      const rating=ratingValues.get(book);
+      if (!rating) return message(form,'Выберите оценку от 1 до 5 звёзд.',true);
+      if (!form.reportValidity()) return;
+      const submit=form.querySelector('[type="submit"]');
+      submit.disabled=true;
+      message(form,'');
+      try {
+        const response=await fetch('/api/book-reviews',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            bookKey:book,rating,text:form.elements.reviewText.value,
+            name:isTelegram ? '' : nameInput.value,
+            initData:isTelegram ? telegram.initData : '',
+            website:form.elements.website.value,
+          }),cache:'no-store',
+        });
+        const json=await response.json();
+        if (!response.ok||!json.ok) throw new Error(json.message||'Не удалось отправить отзыв.');
+        form.elements.reviewText.value='';
+        selectStar(0);
+        message(form,json.status==='pending'
+          ? 'Ваш отзыв отправлен на модерацию.'
+          : 'Спасибо! Отзыв опубликован.');
+        if (json.status==='published') await loadReviews();
+      } catch (error) {message(form,error.message||'Не удалось отправить отзыв.',true);}
+      finally {submit.disabled=false;}
+    });
+  }
+  async function loadAdmin() {
+    if (!isAdminCandidate || !admin) return;
     try {
       const response=await fetch('/api/book-reviews-admin',{
-        method:'POST', headers:{'Content-Type':'application/json'},
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'list',initData:telegram.initData}),cache:'no-store',
+      });
+      const json=await response.json();
+      if (!response.ok||!json.ok) return;
+      admin.hidden=false;
+      adminList.replaceChildren();
+      if (!json.reviews?.length) adminList.append(el('p','reviews-empty','Нет отзывов на модерации.'));
+      else json.reviews.forEach(r => {
+        const row=el('div','reviews-admin-item');
+        row.append(el('strong','',r.book_key==='profit'?'Как лить в плюс':'От А до Я'));
+        row.append(item(r,true));
+        adminList.append(row);
+      });
+    } catch {}
+  }
+  async function moderate(id,action) {
+    if (!isAdminCandidate) return;
+    try {
+      const response=await fetch('/api/book-reviews-admin',{
+        method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({initData:telegram.initData,id,action}),cache:'no-store',
       });
-      const data=await response.json();
-      if (!data.ok) throw new Error('moderation_failed');
-      await Promise.all([loadAdmin(), loadReviews()]);
-    } catch { notice('Не удалось изменить статус отзыва.',true); }
+      const json=await response.json();
+      if (!response.ok||!json.ok||!json.updated) throw new Error('moderation_failed');
+      await Promise.all([loadAdmin(),loadReviews()]);
+    } catch {window.alert('Не удалось изменить статус отзыва. Попробуйте ещё раз.');}
   }
-  selectBook(book);
-  loadReviews().catch(() => {
-    list.replaceChildren(create('p','reviews-empty','Отзывы временно недоступны. Попробуйте позже.'));
-  });
+  loadReviews().catch(() => panels.forEach(panel => {
+    panel.querySelector('[data-reviews-list]').replaceChildren(el('p','reviews-empty','Отзывы временно недоступны.'));
+  }));
   loadAdmin();
 })();
