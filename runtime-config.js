@@ -33,6 +33,8 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     recruitment: true,
     about: true,
     book: true,
+    theory: true,
+    practice: true,
     trustedBy: true,
     channel: true,
     mentor: true,
@@ -43,7 +45,7 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   ui: {
     accent: '#347ef4',
     accentSecondary: '#4a91f8',
-    resourceOrder: ['recruitment', 'about', 'book', 'trustedBy', 'mentor'],
+    resourceOrder: ['recruitment', 'about', 'theory', 'practice', 'book', 'trustedBy', 'mentor'],
     showFreshness: true,
     animations: true,
   },
@@ -61,6 +63,8 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     recruitment: 'https://buildin.ai/arbstart/share/f6663f42-2600-4657-8eea-619aa19f7cd1?code=FH21BF',
     about: 'https://teachercpa-miniapp.vercel.app/reviews',
     book: 'https://irina-miniapp.vercel.app/book',
+    theory: 'https://irina-miniapp.vercel.app/theory',
+    practice: 'https://irina-miniapp.vercel.app/practice',
     mentor: 'https://t.me/teachercpa_bot',
     channel: 'https://t.me/+dMBhIV90W_01ZjIy',
     outsideBot: 'https://t.me/rstshelp_bot',
@@ -71,6 +75,10 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     recruitmentSubtitle: 'Научитесь лить и станьте частью сильного сообщества',
     aboutTitle: 'О команде, кейсы, отзывы',
     aboutSubtitle: 'Реальные результаты и отзывы',
+    theoryTitle: 'Теория',
+    theorySubtitle: 'Основы арбитража трафика бесплатно',
+    practiceTitle: 'Практические инструкции',
+    practiceSubtitle: 'Креативы, инфраструктура, Keitaro и запуск',
     bookTitle: 'Руководства по арбитражу трафика',
     bookSubtitle: 'Две книги для прибыльных запусков',
     mentorTitle: 'Перейти к наставнику',
@@ -119,7 +127,7 @@ function safeColor(value, fallback) {
 
 function safeResourceOrder(value, fallback) {
   if (!Array.isArray(value)) return fallback;
-  const allowed = ['recruitment', 'about', 'book', 'trustedBy', 'mentor'];
+  const allowed = ['recruitment', 'about', 'theory', 'practice', 'book', 'trustedBy', 'mentor'];
   const unique = value.filter((key, index) => allowed.includes(key) && value.indexOf(key) === index);
   for (const key of allowed) {
     if (!unique.includes(key)) unique.push(key);
@@ -202,6 +210,7 @@ export function mergeRuntimeConfig(source = {}) {
     for (const key of [
       'recruitmentBadge', 'recruitmentTitle', 'recruitmentSubtitle',
       'aboutTitle', 'aboutSubtitle', 'bookTitle', 'bookSubtitle',
+      'theoryTitle', 'theorySubtitle', 'practiceTitle', 'practiceSubtitle',
       'mentorTitle', 'mentorSubtitle', 'trustedByTitle', 'outsideTitle', 'outsideDescription',
       'outsideButton', 'staleData', 'updatedNow', 'updatedMinutes', 'cachedAt',
       'syncError', 'retry', 'checkingChanges',
