@@ -56,5 +56,11 @@
         }
       ]
     }
+  ],
+  "rewrites": [
+    {
+      "source": "/learning-media/assets/:filename",
+      "destination": "https://irina-learning-api.cpateammail.workers.dev/media/assets/:filename"
+    }
   ]
 }
