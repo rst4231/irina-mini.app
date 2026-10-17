@@ -1,4 +1,4 @@
-.app-language-switch {display:flex;justify-content:flex-end;position:relative;z-index:30;gap:3px;margin:0 0 10px auto;padding:4px;width:max-content;border:1px solid #d4e3fb;border-radius:14px;background:#fff;box-shadow:0 5px 18px #315b9110}
+.app-language-switch {display:flex;justify-content:center;position:relative;z-index:30;gap:3px;margin:0 auto 10px;padding:4px;width:max-content;border:1px solid #d4e3fb;border-radius:14px;background:#fff;box-shadow:0 5px 18px #315b9110}
 .app-language-switch button {border:0;border-radius:10px;min-width:44px;min-height:36px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800;background:transparent;color:#536d91;cursor:pointer}
 .app-language-switch button[aria-pressed="true"] {background:#e7f0ff;color:#185fc8}
 .app-language-switch button:focus-visible {outline:2px solid #347ef4;outline-offset:2px}
@@ -7,5 +7,5 @@
 [data-theme="dark"] .app-language-switch button[aria-pressed="true"] {background:#315b91;color:#fff}
 html[lang="en"] .resource-title {white-space:normal;line-height:1.25}
 html[lang="en"] .trusted-by-title {letter-spacing:.1em;white-space:normal}
-.outside-telegram-card .app-language-switch {margin-bottom:20px}
+.outside-telegram-card .app-language-switch {margin:20px auto 0}
 .profile-date {margin-top:5px;font-size:13px;font-weight:500;line-height:1.35;color:var(--muted);overflow-wrap:normal}

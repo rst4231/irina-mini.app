@@ -109,10 +109,6 @@
   <main class="page">
     <div class="book-toolbar">
       <a id="book-back-link" class="book-back-link" href="/" target="_self" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg><span>Назад</span></a>
-      <div class="language-switch" role="group" aria-label="Language / Язык">
-        <button type="button" data-book-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
-        <button type="button" data-book-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
-      </div>
     </div>
     <header class="intro">
       <span class="eyebrow">Библиотека арбитражника</span>
@@ -226,7 +222,13 @@
       <h2>Отзывы на модерации</h2>
       <div id="reviews-admin-list"></div>
     </section>
-    <footer class="footer">© 2018–2026</footer>
+    <footer class="footer">
+      <div class="language-switch" role="group" aria-label="Language / Язык">
+        <button type="button" data-book-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
+        <button type="button" data-book-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+      </div>
+      <div>© 2018–2026</div>
+    </footer>
   </main>
   <script defer src="/book-locale.js"></script>
   <script defer src="/book-i18n.js"></script>

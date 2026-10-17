@@ -35,10 +35,6 @@
 
     <section id="outside-telegram-screen" class="outside-telegram-screen" aria-label="Открыть в Telegram" hidden>
       <div class="outside-telegram-card">
-        <div class="app-language-switch" role="group" aria-label="Language / Язык">
-          <button type="button" data-app-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
-          <button type="button" data-app-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
-        </div>
         <div class="outside-telegram-icon" aria-hidden="true">
           <svg class="icon-svg" viewBox="0 0 24 24" focusable="false">
             <path d="M21 3 3.9 9.6c-1.2.5-1.2 1.2-.2 1.5l4.4 1.4 1.7 5.1c.2.7.1 1 .9 1 .6 0 .9-.3 1.2-.6l2.1-2 4.4 3.2c.8.5 1.4.3 1.6-.8L22.8 5c.3-1.4-.5-2.2-1.8-2Zm-2.1 3.2-8.1 7.3-.3 3.1-1.4-4.4 9.1-5.8c.5-.3 1-.1.7.2Z"/>
@@ -47,15 +43,15 @@
         <h1>Откройте страницу в боте @rstshelp_bot</h1>
         <p>Эта страница работает внутри Telegram Mini App.</p>
         <a href="https://t.me/rstshelp_bot" class="outside-telegram-button">Открыть бота</a>
+        <div class="app-language-switch" role="group" aria-label="Language / Язык">
+          <button type="button" data-app-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
+          <button type="button" data-app-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+        </div>
       </div>
     </section>
 
     <main id="app-shell" class="app-shell" hidden>
       <div class="app-content">
-        <div class="app-language-switch" role="group" aria-label="Language / Язык">
-          <button type="button" data-app-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
-          <button type="button" data-app-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
-        </div>
         <section class="profile" aria-label="Профиль пользователя">
           <div class="avatar-wrap" aria-hidden="true">
             <img id="profile-avatar" class="avatar" alt="" hidden />
@@ -194,6 +190,10 @@
         </nav>
 
         <footer class="app-footer">
+        <div class="app-language-switch" role="group" aria-label="Language / Язык">
+          <button type="button" data-app-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
+          <button type="button" data-app-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+        </div>
           <div class="footer-meta">
             <span>© 2018–<span id="footer-year"></span></span>
           </div>

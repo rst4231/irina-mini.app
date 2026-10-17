@@ -3,8 +3,7 @@
 .book-back-link {position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:max(16px,calc((100vw - 560px)/2));z-index:1000;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;min-width:104px;padding:0 15px;border:1px solid #b7cce2;border-radius:999px;background:#eff6ff;color:#174368;box-shadow:0 4px 14px #0a2c4814;font:800 13px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-decoration:none}
 .book-back-link svg {width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .book-back-link:focus-visible {outline:3px solid #258bdf;outline-offset:3px}
-.language-switch {display:inline-flex;gap:3px;padding:4px;border:1px solid #d4e3fb;border-radius:14px;background:#fff;box-shadow:0 5px 18px #315b9110}
-.language-switch {position:fixed;top:calc(13px + env(safe-area-inset-top,0px));right:max(16px,calc((100vw - 560px)/2));z-index:1000}
+.language-switch {display:flex;width:max-content;margin:0 auto 12px;gap:3px;padding:4px;border:1px solid #d4e3fb;border-radius:14px;background:#fff;box-shadow:0 5px 18px #315b9110}
 .language-switch button {border:0;border-radius:10px;min-width:44px;min-height:36px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800;background:transparent;color:#536d91;cursor:pointer}
 .language-switch button[aria-pressed="true"] {background:#e7f0ff;color:#185fc8}
 .language-switch button:focus-visible {outline:2px solid #347ef4;outline-offset:2px}
