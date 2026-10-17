@@ -333,9 +333,10 @@ function renderVisibility() {
   joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
   aboutButton.hidden = paid || !runtimeConfig.features.about;
   bookButton.hidden = paid || !runtimeConfig.features.book;
-  // Public theory and the practice catalog stay available to all users, including students.
-  theoryButton.hidden = !runtimeConfig.features.theory;
-  practiceButton.hidden = !runtimeConfig.features.practice;
+  // The "Оплата" tag hides both beginner learning entry points even if the application status changes.
+  const hasPaidTraining = Boolean(lastProfileData?.hasPaymentTag);
+  theoryButton.hidden = hasPaidTraining || !runtimeConfig.features.theory;
+  practiceButton.hidden = hasPaidTraining || !runtimeConfig.features.practice;
   trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
   mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
   footerChannel.hidden = paid || !runtimeConfig.features.channel;

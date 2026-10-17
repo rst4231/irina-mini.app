@@ -1,4 +1,5 @@
 import { validateInitData } from './profile.js';
+import { verifyLearningCookie } from './learning-cookie.js';
 
 const BOT_ID = '6671465ac84ab24b4702fa25';
 export const SECTION_TAGS = Object.freeze({
@@ -30,10 +31,10 @@ export default async function handler(req,res) {
   if(!Object.hasOwn(SECTION_TAGS,String(section||'')))return respond(res,400,{ok:false,error:'invalid_section'});
   if(!process.env.TELEGRAM_BOT_TOKEN||!process.env.SENDPULSE_API_KEY)
     return respond(res,503,{ok:false,error:'auth_not_configured'});
-  if(typeof initData!=='string'||initData.length<20||initData.length>3500)
-    return respond(res,403,{ok:false,error:'purchase_required'});
-  const user=validateInitData(initData,process.env.TELEGRAM_BOT_TOKEN);
-  if(!user?.id)return respond(res,403,{ok:false,error:'purchase_required'});
+  const user = typeof initData==='string' && initData.length>=20 && initData.length<=3500
+    ? validateInitData(initData,process.env.TELEGRAM_BOT_TOKEN) : null;
+  const verified = user?.id ? {id:String(verified.id)} : verifyLearningCookie(req.headers.cookie,process.env.TELEGRAM_BOT_TOKEN);
+  if(!verified?.id)return respond(res,403,{ok:false,error:'purchase_required'});
   try{
     const url=new URL('https://api.sendpulse.com/telegram/contacts/getByTelegramId');
     url.searchParams.set('bot_id',BOT_ID);

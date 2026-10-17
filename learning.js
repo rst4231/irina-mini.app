@@ -62,11 +62,28 @@ document.addEventListener('click',event=>{
     tg.openTelegramLink(element.href);
   }
 });
-async function api(mode, params={}){
-  const res = await fetch('/api/learning',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode,...params,initData:telegramInitData()}),cache:'no-store'});
-  const data = await res.json().catch(()=>({error:'bad_response'}));
-  if(!res.ok){const e=new Error(data.error||'request_failed');e.status=res.status;throw e;}
+const LESSONS_PUBLIC_API = 'https://irina-learning-api.cpateammail.workers.dev';
+async function fetchLearning(url, options = {}) {
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(9000), ...options });
+  const data = await response.json().catch(() => ({error:'invalid_response'}));
+  if (!response.ok || data?.ok === false) {
+    const error = new Error(data.error || 'learning_unavailable');
+    error.status = response.status;
+    throw error;
+  }
   return data;
+}
+async function api(mode, params={}) {
+  const backend = () => fetchLearning('/api/learning', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    credentials:'same-origin',
+    body:JSON.stringify({mode,...params,initData:telegramInitData()}),
+  });
+  if(mode==='list' || mode==='catalog'){
+    const path=mode==='catalog'?'/catalog':'/list?section='+encodeURIComponent(params.section||'');
+    return Promise.any([backend(),fetchLearning(LESSONS_PUBLIC_API+path,{mode:'cors',credentials:'omit'})]);
+  }
+  return backend();
 }
 function header(title,subtitle,badges=[]){
   return '<div class="hero"><h1>'+esc(title)+'</h1><p>'+esc(subtitle)+'</p>'+(badges.length?'<div class="hero-data">'+badges.map(t=>'<span class="hero-pill">'+esc(t)+'</span>').join('')+'</div>':'')+'</div>';
@@ -93,30 +110,81 @@ function markdownInline(raw){
   return content;
 }
 function renderMarkdown(source){
-  const cleaned=String(source||'').replace(/<summary>/gi,'\n### ').replace(/<\/summary>/gi,'\n').replace(/<\/?details[^>]*>/gi,'\n').replace(/<br\s*\/?>/gi,'\n').replace(/\r\n?/g,'\n');
-  const lines=cleaned.split('\n');let out='';let list=null;let paragraph=[];
-  const flush=()=>{if(paragraph.length){out+='<p>'+markdownInline(paragraph.join(' '))+'</p>';paragraph=[];}};
-  const close=()=>{if(list){out+='</'+list+'>';list=null;}};
-  for(const raw of lines){const line=raw.trim();
-    if(!line){flush();close();continue;}
+  const cleaned=String(source||'')
+    .replace(/<summary>/gi,'\n### ').replace(/<\/summary>/gi,'\n')
+    .replace(/<\/?details[^>]*>/gi,'\n')
+    .replace(/<br\s*\/?>/gi,'\n').replace(/\r\n?/g,'\n');
+  const lines=cleaned.split('\n');
+  let output='',paragraph=[],list=null,quote=[],code=[],inCode=false;
+  const flushParagraph=()=>{
+    if(!paragraph.length)return;
+    const value=paragraph.join(' ').trim();
+    const note=value.match(/^\*\*(Важно|Совет|Пример|Обратите внимание|Проверьте|Запомните):?\*\*\s*(.*)$/i);
+    if(note)output+='<aside class="lesson-note"><span class="lesson-note-heading">'+markdownInline(note[1])+'</span><div>'+markdownInline(note[2]||'')+'</div></aside>';
+    else output+='<p>'+markdownInline(value)+'</p>';
+    paragraph=[];
+  };
+  const closeList=()=>{if(list){output+='</'+list+'>';list=null;}};
+  const flushQuote=()=>{if(quote.length){output+='<blockquote>'+quote.map(markdownInline).join(' ')+'</blockquote>';quote=[];}};
+  const tableRow=line=>line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(v=>v.trim());
+  const isDivider=line=>/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
+  const isList=line=>/^([-*+]\s+|\d+[.)]\s+)/.test(line);
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i].trim();
+    if(inCode){
+      if(/^\x60{3}/.test(line)){output+='<pre><code>'+esc(code.join('\n'))+'</code></pre>';code=[];inCode=false;}
+      else code.push(lines[i]);
+      continue;
+    }
+    if(/^\x60{3}/.test(line)){flushParagraph();flushQuote();closeList();inCode=true;continue;}
+    if(!line){
+      flushParagraph();flushQuote();
+      const upcoming=lines.slice(i+1).find(x=>x.trim())?.trim()||'';
+      if(!list || !isList(upcoming) || (list==='ul')!==/^[-*+]\s+/.test(upcoming))closeList();
+      continue;
+    }
+    if(/^\|/.test(line) && i+1<lines.length && isDivider(lines[i+1])){
+      flushParagraph();flushQuote();closeList();
+      const headings=tableRow(line);
+      output+='<div class="lesson-table-wrap"><table class="lesson-table"><thead><tr>'+headings.map(v=>'<th>'+markdownInline(v)+'</th>').join('')+'</tr></thead><tbody>';
+      i++;
+      while(i+1<lines.length&&/^\|/.test(lines[i+1].trim())&&!isDivider(lines[i+1])){
+        const cells=tableRow(lines[++i]);
+        output+='<tr>'+headings.map((v,k)=>'<td>'+markdownInline(cells[k]||'')+'</td>').join('')+'</tr>';
+      }
+      output+='</tbody></table></div>';
+      continue;
+    }
     const heading=line.match(/^(#{1,5})\s+(.+)$/);
-    if(heading){flush();close();const size=Math.min(heading[1].length+1,4);out+='<h'+size+'>'+markdownInline(heading[2])+'</h'+size+'>';continue;}
-    if(/^(-{3,}|\*{3,})$/.test(line)){flush();close();out+='<hr>';continue;}
-    const bullet=line.match(/^[-*+]\s+(.+)$/);const number=line.match(/^\d+[.)]\s+(.+)$/);
-    if(bullet||number){flush();const type=bullet?'ul':'ol';if(list!==type){close();out+='<'+type+'>';list=type;}out+='<li>'+markdownInline((bullet||number)[1])+'</li>';continue;}
-    if(line.startsWith('>')){flush();close();out+='<blockquote>'+markdownInline(line.replace(/^>\s*/,''))+'</blockquote>';continue;}
-    close();paragraph.push(line);
+    if(heading){
+      flushParagraph();flushQuote();closeList();
+      const level=Math.min(heading[1].length+1,4);
+      output+='<h'+level+'>'+markdownInline(heading[2])+'</h'+level+'>';
+      continue;
+    }
+    if(/^([-*_]\s*){3,}$/.test(line)){
+      flushParagraph();flushQuote();closeList();output+='<hr>';continue;
+    }
+    const bullet=line.match(/^[-*+]\s+(.+)$/);
+    const numbered=line.match(/^\d+[.)]\s+(.+)$/);
+    if(bullet||numbered){
+      flushParagraph();flushQuote();
+      const kind=bullet?'ul':'ol';
+      if(list!==kind){closeList();output+='<'+kind+'>';list=kind;}
+      output+='<li>'+markdownInline((bullet||numbered)[1])+'</li>';
+      continue;
+    }
+    if(line.startsWith('>')){
+      flushParagraph();closeList();quote.push(line.replace(/^>\s*/,''));continue;
+    }
+    flushQuote();closeList();paragraph.push(line);
   }
-  flush();close();return out;
+  flushParagraph();flushQuote();closeList();
+  if(inCode)output+='<pre><code>'+esc(code.join('\n'))+'</code></pre>';
+  return output;
 }
 async function showLesson(section,id){
   activeSection=section;
-  if(section!=='theory' && !telegramInitData()){
-    const selected=sectionById(section);
-    app.innerHTML=header(selected?.title||'Практические инструкции','Для проверки метки нужен вход через Telegram.')+
-      '<section class="purchase-panel"><h2>Войдите через Telegram</h2><p>Метка SendPulse проверяется автоматически, но для этого откройте Irina через Telegram Mini App. Повторно покупать ничего не нужно.</p><a class="button-main" href="https://t.me/rstshelp_bot" target="_blank" rel="noopener noreferrer">Открыть бота ↗</a></section>';
-    return;
-  }
   app.innerHTML=header('Загружаем урок','Открываем материал…')+'<div class="status">Загружаем содержимое…</div>';
   try{
     const result=await api('lesson',{section,id});
@@ -125,7 +193,11 @@ async function showLesson(section,id){
     app.innerHTML=header(lesson.title,subtitle,['Урок','Пошаговая инструкция'])+'<article class="lesson-article"><div class="lesson-prose">'+renderMarkdown(lesson.body)+'</div></article><button class="button-outline back-to-catalog" id="lesson-back">← К списку материалов</button><footer class="foot">© 2018–'+new Date().getFullYear()+'</footer>';
     document.getElementById('lesson-back')?.addEventListener('click',goBack);
   }catch(error){
-    if(error.status===403){
+    if(error.status===401){
+      const chosen=sectionById(section);
+      app.innerHTML=header(chosen?.title||'Практические инструкции','Не удалось подтвердить Telegram-профиль.')+
+        '<section class="purchase-panel"><h2>Откройте Irina из Telegram</h2><p>Если метка уже есть, покупать повторно не нужно. Откройте главную Irina через мини-приложение и вернитесь в урок.</p><a class="button-main" href="/">На главную →</a></section>';
+    } else if(error.status===403){
       const chosen=sectionById(section);
       app.innerHTML=header(chosen?.title||'Практические инструкции','Для чтения этого урока нужен доступ к выбранному разделу.')+'<section class="purchase-panel"><h2>Материал доступен после покупки</h2><p>Стоимость всего раздела: '+esc(settings.practice_price_stars||'1200')+' ⭐. После подтверждённой покупки бот выдаст доступ. Если уже оплатили, вернитесь сюда из Telegram и проверьте его.</p><div class="product-footer">'+buyButton('Купить раздел')+'<button type="button" class="button-outline" id="check-learning-access">Проверить доступ</button></div></section>';
       document.getElementById('check-learning-access')?.addEventListener('click',()=>showLesson(section,id));
@@ -164,7 +236,7 @@ async function run(){
       else await showTheory();
     }else{
       const section=q.get('topic');
-      if(!section){try{const x=await api('catalog');lessons=x.lessons||[];settings={...settings,...x.settings};}catch{}await showStore();}
+      if(!section){await showStore();}
       else if(q.get('lesson')){try{const x=await api('list',{section});lessonMap=new Map((x.lessons||[]).map(v=>[v.id,v]));}catch{}await showLesson(section,q.get('lesson'));}
       else await showSection(section);
     }
