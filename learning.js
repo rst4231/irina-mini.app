@@ -118,7 +118,8 @@ function markdownInline(raw){
     const internal = target && lessonMap.has(target[1]);
     const href = internal ? lessonHref(activeSection,target[1]) : url.replace(/&amp;/g,'&');
     if(!/^https:\/\//.test(href)&&!href.startsWith('/'))return esc(label);
-    return '<a href="'+esc(href)+'"'+(internal?'':' target="_blank" rel="noopener noreferrer"')+'>'+label+'</a>';
+    const video = /(?:youtu(?:be)?\.(?:com|be)|vimeo\.com|rutube\.ru|vkvideo\.ru|\/videos?\/|\/file\/d\/)/i.test(href) || /🎥|📹|видео|видеоурок|видеогайд|посмотреть ролик/i.test(label.replace(/<[^>]*>/g,''));
+    return '<a class="article-link-btn'+(video?' video':'')+'" href="'+esc(href)+'"'+(internal?'':' target="_blank" rel="noopener noreferrer"')+'>'+label+'</a>';
   });
   content=content.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g,'<em>$1</em>');
   content=content.replace(/`([^`]+)`/g,'<code>$1</code>');
@@ -156,6 +157,12 @@ function renderMarkdown(source){
       flushParagraph();flushQuote();
       const upcoming=lines.slice(i+1).find(x=>x.trim())?.trim()||'';
       if(!list || !isList(upcoming) || (list==='ul')!==/^[-*+]\s+/.test(upcoming))closeList();
+      continue;
+    }
+    const illustration=line.match(/^!\[([^\]]*)\]\((https:\/\/irina-learning-api\.cpateammail\.workers\.dev\/media\/assets\/[A-Za-z0-9-]+\.(?:png|jpe?g|webp|gif|php))\)$/i);
+    if(illustration){
+      flushParagraph();flushQuote();closeList();
+      output+='<figure class="lesson-figure"><img loading="lazy" decoding="async" src="'+esc(illustration[2])+'" alt="'+esc(illustration[1]||'Иллюстрация к уроку')+'"></figure>';
       continue;
     }
     if(/^\|/.test(line) && i+1<lines.length && isDivider(lines[i+1])){
