@@ -3,3 +3,59 @@
 .learning-wrap{max-width:870px;margin:0 auto;padding:calc(77px + env(safe-area-inset-top,0px)) 18px calc(54px + env(safe-area-inset-bottom,0px));min-height:100dvh}.learning-bar{position:fixed;left:0;top:0;right:0;z-index:100;background:color-mix(in srgb,var(--page) 93%,transparent);border-bottom:1px solid var(--line);backdrop-filter:blur(18px);padding:calc(11px + env(safe-area-inset-top,0px)) max(18px,calc((100vw - 870px)/2 + 18px)) 11px;display:flex;gap:10px;align-items:center;justify-content:space-between}.learning-nav{border:1px solid var(--line);background:var(--card);color:var(--ink);text-decoration:none;border-radius:999px;display:inline-flex;justify-content:center;align-items:center;gap:7px;min-height:40px;padding:9px 17px;font-weight:750;font-size:13px;cursor:pointer}.learning-nav svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.learning-nav.home{color:var(--accent)}.hero{text-align:left;padding:25px 2px 22px}.hero-kicker{font-size:11px;letter-spacing:.12em;font-weight:850;text-transform:uppercase;color:var(--accent);display:inline-block;margin-bottom:9px}.hero h1{font-size:clamp(30px,7vw,45px);letter-spacing:-.052em;line-height:1.11;margin:0 0 12px;font-weight:850}.hero p{font-size:15px;color:var(--muted);line-height:1.65;max-width:640px;margin:0}.hero-data{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}.hero-pill{background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:760;padding:8px 12px;border-radius:100px}.list{display:grid;grid-template-columns:1fr;gap:12px}.unit{display:flex;align-items:center;gap:13px;width:100%;text-align:left;padding:18px;border:1px solid var(--line);border-radius:21px;background:var(--card);box-shadow:var(--shadow);cursor:pointer;text-decoration:none;color:var(--ink);transition:transform .18s,box-shadow .18s}.unit:hover{transform:translateY(-2px);box-shadow:0 20px 45px rgba(38,74,132,.13)}.unit-icon{border-radius:13px;width:43px;height:43px;flex:0 0 43px;background:var(--accent-soft);display:grid;place-items:center;font-size:20px;color:var(--accent);font-weight:850}.unit-body{flex:1;min-width:0}.unit-title{display:block;font-size:15.5px;line-height:1.35;font-weight:790;letter-spacing:-.013em}.unit-note{display:block;margin-top:4px;font-size:12px;line-height:1.5;color:var(--muted)}.unit-chevron{font-size:25px;color:#8ca7cf}.product-grid{display:grid;gap:13px}.product{display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:var(--shadow)}.product-top{display:flex;gap:12px;align-items:center}.product-icon{width:47px;height:47px;display:grid;place-items:center;flex:0 0 47px;border-radius:15px;background:var(--accent-soft);color:var(--accent);font-size:22px}.product h2{font-size:19px;letter-spacing:-.035em;margin:0}.product p{font-size:13px;line-height:1.55;color:var(--muted);margin:0}.product-meta{font-size:12px;color:var(--muted);margin-top:auto}.product-footer{display:flex;gap:9px;align-items:center;justify-content:space-between}.stars{font-size:20px;font-weight:850;white-space:nowrap;letter-spacing:-.02em}.button-main{appearance:none;border:0;background:linear-gradient(125deg,#438aff,#2473e9);color:#fff;min-height:43px;border-radius:13px;padding:9px 17px;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:7px;font-size:13px}.button-outline{appearance:none;border:1px solid var(--line);background:var(--accent-soft);color:var(--accent);min-height:42px;border-radius:13px;padding:9px 14px;font-weight:800;cursor:pointer}.bundle{margin-top:16px;background:linear-gradient(128deg,#20385e,#285fba);color:#fff;border-radius:24px;padding:22px;box-shadow:0 16px 38px #29548e33}.bundle .bundle-tag{font-size:11px;color:#aad3ff;text-transform:uppercase;font-weight:850;letter-spacing:.12em}.bundle h2{font-size:22px;margin:7px 0;letter-spacing:-.03em}.bundle p{font-size:13px;line-height:1.6;color:#d6e5ff;margin:0 0 14px}.bundle .bundle-footer{display:flex;align-items:center;justify-content:space-between;gap:9px}.bundle .stars{font-size:23px}.bundle .button-main{background:#fff;color:#2659ae}.section-panel{margin:14px 0;border:1px solid var(--line);border-radius:24px;padding:18px;background:var(--card)}.section-panel h2{margin:0 0 12px;font-size:21px;letter-spacing:-.03em}.lesson-list{display:grid;gap:8px}.lesson-row{display:flex;gap:9px;align-items:flex-start;width:100%;padding:12px 13px;text-align:left;background:var(--page);border:1px solid var(--line);border-radius:13px;color:var(--ink);font-size:13px;font-weight:650}.lesson-row .num{font-weight:850;color:var(--accent);min-width:25px}.lesson-row.can-open{cursor:pointer}.lesson-article{max-width:760px;margin:0 auto 30px;background:var(--card);padding:clamp(18px,5vw,34px);border-radius:25px;border:1px solid var(--line);box-shadow:var(--shadow)}.lesson-article h1{font-size:clamp(24px,5vw,33px);line-height:1.15;letter-spacing:-.04em;margin:4px 0 23px}.lesson-prose{font-size:15px;line-height:1.78;overflow-wrap:anywhere}.lesson-prose h1,.lesson-prose h2,.lesson-prose h3,.lesson-prose h4{line-height:1.3;margin:23px 0 11px;letter-spacing:-.028em}.lesson-prose h1{font-size:24px}.lesson-prose h2{font-size:21px}.lesson-prose h3{font-size:18px}.lesson-prose h4{font-size:16px}.lesson-prose p{margin:12px 0}.lesson-prose ul,.lesson-prose ol{padding-left:22px;margin:8px 0 16px}.lesson-prose li{padding:3px 0}.lesson-prose a{color:var(--accent);font-weight:650;text-decoration:underline;text-decoration-color:#9ec1f9;text-underline-offset:3px}.lesson-prose blockquote{margin:16px 0;border-left:3px solid var(--accent);background:var(--accent-soft);padding:12px 14px;border-radius:0 11px 11px 0}.lesson-prose hr{border:0;border-top:1px solid var(--line);margin:23px 0}.lesson-prose code{background:var(--accent-soft);border-radius:5px;padding:2px 5px}.hint{margin:15px 0;padding:15px;border-radius:15px;border:1px solid var(--line);background:var(--accent-soft);color:var(--ink);font-size:13px;line-height:1.6}.status{padding:17px;border-radius:17px;background:var(--card);border:1px solid var(--line);font-size:14px;color:var(--muted);line-height:1.5}.purchase-panel{margin:15px 0;padding:21px;border-radius:23px;background:var(--card);border:1px solid var(--line)}.purchase-panel h2{font-size:19px;margin:0 0 10px}.purchase-panel p{font-size:13px;color:var(--muted);line-height:1.6;margin:0 0 16px}.purchase-panel .button-main{min-width:175px}.foot{text-align:center;padding:28px 4px;color:var(--muted);font-size:12px}.back-to-catalog{margin:0 0 15px}
 @media(min-width:700px){.list,.product-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.hero{padding:37px 5px 30px}.unit{min-height:104px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{transition:none!important;scroll-behavior:auto!important}}
 [data-theme="dark"]{color-scheme:dark;--page:#10192a;--card:#1b2940;--ink:#edf3ff;--muted:#a8b9d4;--line:#30435e;--accent:#9bc5ff;--accent-soft:#253d5e;--shadow:0 16px 44px #0003}[data-theme="dark"] body{background:radial-gradient(ellipse at 75% -15%,#1a3c69,transparent 42%),linear-gradient(180deg,#0c1424,#131f31 70%,#0e1829)}[data-theme="dark"] .button-main{background:linear-gradient(125deg,#367de9,#2466ce);color:#fff}[data-theme="dark"] .bundle{background:linear-gradient(128deg,#193255,#2356a0)}[data-theme="dark"] .bundle .button-main{background:#fff;color:#245da9}
+
+/* Cleaner reading layout for both free theory and paid lessons. */
+.lesson-article{max-width:800px;padding:clamp(20px,4.8vw,40px);border-radius:25px;box-shadow:0 18px 52px rgba(26,64,119,.07)}
+.lesson-prose{font-size:clamp(15px,2.7vw,16px);line-height:1.82;letter-spacing:-.005em;overflow-wrap:anywhere;word-break:normal}
+.lesson-prose>p{margin:0 0 17px}
+.lesson-prose strong{font-weight:780}
+.lesson-prose>h2{position:relative;margin:37px 0 17px;padding:0 0 14px;border-bottom:1px solid var(--line);font-size:clamp(22px,4.8vw,28px);font-weight:830;letter-spacing:-.036em;line-height:1.28}
+.lesson-prose>h2:first-child{margin-top:2px}
+.lesson-prose>h2::after{content:"";position:absolute;width:38px;height:3px;left:0;bottom:-2px;background:var(--accent);border-radius:4px}
+.lesson-prose>h3{font-size:clamp(18px,4.4vw,21px);line-height:1.34;margin:28px 0 13px;letter-spacing:-.028em;font-weight:800}
+.lesson-prose>h4{font-size:16px;margin:22px 0 9px;font-weight:800;color:var(--accent)}
+.lesson-prose>h2 + p,.lesson-prose>h3 + p{margin-top:0}
+.lesson-prose ul,.lesson-prose ol{list-style:none;margin:16px 0 23px;padding:8px 16px;border:1px solid var(--line);background:color-mix(in srgb,var(--accent-soft) 46%,var(--card));border-radius:17px}
+.lesson-prose ol{counter-reset:learning-step}
+.lesson-prose li{position:relative;margin:0;padding:11px 0 11px 29px;line-height:1.64}
+.lesson-prose li + li{border-top:1px solid color-mix(in srgb,var(--line) 74%,transparent)}
+.lesson-prose ul>li::before{content:"";position:absolute;top:21px;left:7px;width:8px;height:8px;background:var(--accent);border-radius:50%}
+.lesson-prose ol>li{counter-increment:learning-step;padding-left:39px}
+.lesson-prose ol>li::before{content:counter(learning-step);display:grid;place-items:center;position:absolute;top:10px;left:0;width:27px;height:27px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:12px;line-height:1;font-weight:830}
+.lesson-prose li>ul,.lesson-prose li>ol{margin:9px 0;padding:4px 0 0 7px;background:none;border:0}
+.lesson-prose a{color:var(--accent);font-weight:720;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.lesson-prose a:focus-visible{border-radius:4px}
+.lesson-prose blockquote{margin:23px 0;padding:17px 20px;border-left:4px solid var(--accent);border-radius:0 16px 16px 0;background:var(--accent-soft);font-size:15px;line-height:1.7}
+.lesson-prose blockquote p:last-child{margin-bottom:0}
+.lesson-prose hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+.lesson-prose code{border-radius:5px;padding:3px 6px;background:var(--accent-soft);font-size:.91em}
+.lesson-prose pre{margin:22px 0;padding:17px;border-radius:14px;border:1px solid var(--line);background:var(--page);max-width:100%;overflow-x:auto}
+.lesson-prose pre code{background:none;padding:0;white-space:pre;font-size:13px;line-height:1.6}
+.lesson-note{margin:22px 0;padding:16px 19px;background:var(--accent-soft);border:1px solid var(--line);border-radius:15px;line-height:1.65}
+.lesson-note-heading{display:block;margin-bottom:7px;font-weight:830;color:var(--accent)}
+.lesson-table-wrap{max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:15px;margin:23px 0}
+.lesson-table{width:100%;border-collapse:collapse;min-width:360px;font-size:13px;line-height:1.56}
+.lesson-table th{text-align:left;padding:12px 13px;background:var(--accent-soft);font-weight:820}
+.lesson-table td{padding:11px 13px;vertical-align:top;border-top:1px solid var(--line)}
+.lesson-table th+th,.lesson-table td+td{border-left:1px solid var(--line)}
+.lesson-table tr:nth-child(even){background:color-mix(in srgb,var(--accent-soft) 30%,var(--card))}
+@media(max-width:480px){.lesson-article{margin-left:-3px;margin-right:-3px;padding:19px 18px;border-radius:21px}.lesson-prose ol,.lesson-prose ul{padding:6px 12px}.lesson-prose ol>li{padding-left:36px}}
+@media(prefers-reduced-motion:reduce){.lesson-article,.lesson-prose *{scroll-behavior:auto!important}}
+
+
+/* Link labels should not look like underlined paragraphs: the entire row is clickable. */
+.learning-wrap a:link,
+.learning-wrap a:visited,
+.learning-wrap a:hover,
+.learning-wrap a:focus-visible {
+  text-decoration: none;
+}
+.learning-wrap .lesson-list a.lesson-row,
+.learning-wrap .lesson-list a.lesson-row * {
+  text-decoration: none;
+}
+.learning-wrap .lesson-prose a {
+  color: var(--accent);
+  font-weight: 720;
+  text-decoration: none;
+}

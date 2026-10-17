@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { createLearningCookie } from './learning-cookie.js';
 
 const SENDPULSE_BOT_ID = '6671465ac84ab24b4702fa25';
 const SENDPULSE_BASE = 'https://api.sendpulse.com/telegram';
@@ -121,6 +122,8 @@ export default async function handler(req, res) {
     : DEFAULT_INIT_DATA_MAX_AGE_SECONDS;
   const user = validateInitData(initData, botToken, { maxAgeSeconds });
   if (!user?.id) return json(res, 401, { ok: false, error: 'invalid_or_stale_init_data' });
+  // Same-origin, HTTP-only identity ticket for navigating to paid lessons.
+  res.setHeader('Set-Cookie', createLearningCookie(user.id, botToken));
 
   try {
     const contact = await getSendPulseContact(user.id, sendPulseApiKey);

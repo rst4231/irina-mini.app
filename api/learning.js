@@ -1,3 +1,4 @@
+import { extractLearningCookieHeader } from './learning-cookie.js';
 const SECTIONS=new Set(['theory','creatives','infrastructure','keitaro','launch']);
 const CLOUD='https://irina-learning-api.cpateammail.workers.dev';
 function respond(res,status,data){
@@ -15,7 +16,8 @@ export default async function handler(req,res){
   if(!['catalog','list','lesson'].includes(mode))return respond(res,400,{ok:false,error:'invalid_mode'});
   if(mode!=='catalog'&&!SECTIONS.has(section))return respond(res,400,{ok:false,error:'invalid_section'});
   if(mode==='lesson'&&!/^[a-f0-9-]{36}$/.test(String(id||'')))return respond(res,400,{ok:false,error:'invalid_id'});
-  if(mode==='lesson'&&section!=='theory'&&(typeof initData!=='string'||initData.length<20||initData.length>3500))
+  const sessionCookie = extractLearningCookieHeader(req.headers.cookie);
+  if(mode==='lesson'&&section!=='theory'&&(!initData||typeof initData!=='string'||initData.length>3500)&&!sessionCookie)
     return respond(res,403,{ok:false,error:'purchase_required'});
   const url = new URL(mode,CLOUD+'/');
   if(mode==='list')url.searchParams.set('section',section);
@@ -23,7 +25,7 @@ export default async function handler(req,res){
     const method=mode==='lesson'?'POST':'GET';
     const response=await fetch(url.toString(),{
       method,headers:{Accept:'application/json',...(method==='POST'?{'Content-Type':'application/json'}:{})},
-      ...(method==='POST'?{body:JSON.stringify({id,section,initData:typeof initData==='string'?initData:''})}:{}),
+      ...(method==='POST'?{body:JSON.stringify({id,section,initData:typeof initData==='string'?initData:'',session:sessionCookie})}:{}),
       signal:AbortSignal.timeout(11000),cache:'no-store',
     });
     const payload=await response.json().catch(()=>({ok:false,error:'invalid_provider_response'}));
