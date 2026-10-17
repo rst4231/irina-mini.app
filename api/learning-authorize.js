@@ -33,12 +33,12 @@ export default async function handler(req,res) {
     return respond(res,503,{ok:false,error:'auth_not_configured'});
   const user = typeof initData==='string' && initData.length>=20 && initData.length<=3500
     ? validateInitData(initData,process.env.TELEGRAM_BOT_TOKEN) : null;
-  const verified = user?.id ? {id:String(verified.id)} : verifyLearningCookie(req.headers.cookie,process.env.TELEGRAM_BOT_TOKEN);
+  const verified = user?.id ? {id:String(user.id)} : verifyLearningCookie(req.headers.cookie,process.env.TELEGRAM_BOT_TOKEN);
   if(!verified?.id)return respond(res,403,{ok:false,error:'purchase_required'});
   try{
     const url=new URL('https://api.sendpulse.com/telegram/contacts/getByTelegramId');
     url.searchParams.set('bot_id',BOT_ID);
-    url.searchParams.set('telegram_id',String(user.id));
+    url.searchParams.set('telegram_id',verified.id);
     const response=await fetch(url.toString(),{
       headers:{Authorization:'Bearer '+process.env.SENDPULSE_API_KEY,Accept:'application/json'},
       cache:'no-store',signal:AbortSignal.timeout(7500),
