@@ -263,7 +263,19 @@ async function showSection(id){
     bindPurchaseRetry();
   }catch{failure();}
 }
+function showPracticeTelegramGate(){
+  app.innerHTML='<section class="practice-entry-gate" role="status">'+
+    '<span class="practice-entry-symbol" aria-hidden="true">🔒</span>'+
+    '<h1>Откройте практику в Telegram</h1>'+
+    '<p>Практические инструкции доступны через мини-приложение Irina. Перейдите в бота, откройте Irina и выберите раздел «Практические инструкции».</p>'+
+    '<a class="button-main practice-entry-link" href="'+esc(purchaseURL)+'" target="_blank" rel="noopener noreferrer">Перейти в Telegram ↗</a>'+
+    '</section>';
+}
 async function run(){
+  if(page==='practice' && !telegramInitData()){
+    showPracticeTelegramGate();
+    return;
+  }
   const q=currentQuery();
   try{
     if(page==='theory'){
