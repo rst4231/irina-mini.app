@@ -57,7 +57,7 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   links: {
     fillApplication: 'https://t.me/rstshelp_bot?start=69de0afdde3f2d88240a95e8',
     discussTerms: 'https://t.me/rstshelp_bot?start=6a3d21d4694618648d009d8d',
-    viewTerms: 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f',
+    viewTerms: 'https://team.arbstart.tech/win-win/',
     recruitment: 'https://buildin.ai/arbstart/share/f6663f42-2600-4657-8eea-619aa19f7cd1?code=FH21BF',
     about: 'https://teachercpa-miniapp.vercel.app/reviews',
     book: 'https://irina-miniapp.vercel.app/book',
