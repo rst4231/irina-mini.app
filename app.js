@@ -46,6 +46,8 @@ const resourceButtons = document.querySelector('.resource-buttons');
 const joinTeamButton = document.getElementById('join-team-button');
 const aboutButton = document.getElementById('about-button');
 const bookButton = document.getElementById('book-button');
+const theoryButton = document.getElementById('theory-button');
+const practiceButton = document.getElementById('practice-button');
 const trustedByBlock = document.getElementById('trusted-by');
 const mentorButton = document.getElementById('mentor-button');
 const footerYear = document.getElementById('footer-year');
@@ -242,6 +244,8 @@ function reorderResources() {
     recruitment: joinTeamButton,
     about: aboutButton,
     book: bookButton,
+    theory: theoryButton,
+    practice: practiceButton,
     trustedBy: trustedByBlock,
     mentor: mentorButton,
   };
@@ -249,6 +253,8 @@ function reorderResources() {
     const node = nodes[key];
     if (node) resourceButtons.appendChild(node);
   }
+  // Always keep the educational resources immediately above the guides.
+  if (bookButton?.parentElement === resourceButtons) bookButton.before(theoryButton, practiceButton);
 }
 
 function setApplicationLoading(loading) {
@@ -323,6 +329,9 @@ function renderVisibility() {
   joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
   aboutButton.hidden = paid || !runtimeConfig.features.about;
   bookButton.hidden = paid || !runtimeConfig.features.book;
+  // Public theory and the practice catalog stay available to all users, including students.
+  theoryButton.hidden = !runtimeConfig.features.theory;
+  practiceButton.hidden = !runtimeConfig.features.practice;
   trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
   mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
   footerChannel.hidden = paid || !runtimeConfig.features.channel;
@@ -344,6 +353,16 @@ function applyRuntimeConfig(config) {
     title: runtimeConfig.copy.aboutTitle,
     subtitle: runtimeConfig.copy.aboutSubtitle,
     url: runtimeConfig.links.about,
+  });
+  setResourceContent(theoryButton, {
+    title: runtimeConfig.copy.theoryTitle,
+    subtitle: runtimeConfig.copy.theorySubtitle,
+    url: runtimeConfig.links.theory,
+  });
+  setResourceContent(practiceButton, {
+    title: runtimeConfig.copy.practiceTitle,
+    subtitle: runtimeConfig.copy.practiceSubtitle,
+    url: runtimeConfig.links.practice,
   });
   setResourceContent(bookButton, {
     title: runtimeConfig.copy.bookTitle,
@@ -568,6 +587,15 @@ applicationButton.addEventListener('click', (event) => {
 
 // Remember the Telegram launch URL only when entering the book page from
 // this Mini App. Returning Home then restores the original Telegram context.
+// Save the original Mini App launch context for Home on the learning pages.
+[theoryButton, practiceButton].forEach(button => button?.addEventListener('click', () => {
+  try {
+    if (hasTelegramContext) {
+      sessionStorage.setItem('irina_learning_home_context', JSON.stringify({url:window.location.href,savedAt:Date.now()}));
+    } else sessionStorage.removeItem('irina_learning_home_context');
+  } catch { /* Private browser storage can be unavailable. */ }
+}));
+
 bookButton?.addEventListener('click', () => {
   try {
     const key = 'irina_book_home_context';
