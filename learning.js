@@ -116,7 +116,8 @@ async function showLesson(section,id){
   }catch(error){
     if(error.status===403){
       const chosen=sectionById(section);
-      app.innerHTML=header(chosen?.title||'Практические инструкции','Для чтения этого урока нужен доступ к выбранному разделу.')+'<section class="purchase-panel"><h2>Материал доступен после покупки</h2><p>Стоимость всего раздела: '+esc(settings.practice_price_stars||'1200')+' ⭐. После оплаты в Telegram доступ выдаётся через бота. Если уже оплатили, откройте страницу из Telegram и повторите попытку.</p>'+buyButton('Купить раздел')+'</section>';
+      app.innerHTML=header(chosen?.title||'Практические инструкции','Для чтения этого урока нужен доступ к выбранному разделу.')+'<section class="purchase-panel"><h2>Материал доступен после покупки</h2><p>Стоимость всего раздела: '+esc(settings.practice_price_stars||'1200')+' ⭐. После подтверждённой покупки бот выдаст доступ. Если уже оплатили, вернитесь сюда из Telegram и проверьте его.</p><div class="product-footer">'+buyButton('Купить раздел')+'<button type="button" class="button-outline" id="check-learning-access">Проверить доступ</button></div></section>';
+      document.getElementById('check-learning-access')?.addEventListener('click',()=>showLesson(section,id));
     }else failure(error.message==='learning_unavailable'?'Сервис материалов временно недоступен. Доступ к платным урокам не открывается без проверки покупки.':undefined);
   }
 }
@@ -126,7 +127,7 @@ async function showTheory(){
 }
 async function showStore(){
   app.innerHTML=header('Практические инструкции','Выберите тему или заберите сразу четыре раздела. Каждая покупка открывает все материалы выбранной темы.', ['4 направления','Оплата в Telegram Stars'])+'<div class="status">Загружаем каталог…</div>';
-  try{const r=await api('catalog');settings={...settings,...r.settings};}catch{/* Catalog cards remain available if content service is temporarily unavailable. */ }
+  try{const r=await api('catalog');lessons=r.lessons||lessons;settings={...settings,...r.settings};}catch{/* Keep the catalog accessible during a temporary content outage. */ }
   const price=esc(settings.practice_price_stars||'1200');
   const html=sections.map(s=>{
     const count=lessons.filter(l=>l.section===s.id).length;

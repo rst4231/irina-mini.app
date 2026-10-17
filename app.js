@@ -329,8 +329,9 @@ function renderVisibility() {
   joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
   aboutButton.hidden = paid || !runtimeConfig.features.about;
   bookButton.hidden = paid || !runtimeConfig.features.book;
-  theoryButton.hidden = paid || !runtimeConfig.features.theory;
-  practiceButton.hidden = paid || !runtimeConfig.features.practice;
+  // Public theory and the practice catalog stay available to all users, including students.
+  theoryButton.hidden = !runtimeConfig.features.theory;
+  practiceButton.hidden = !runtimeConfig.features.practice;
   trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
   mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
   footerChannel.hidden = paid || !runtimeConfig.features.channel;
