@@ -1,9 +1,10 @@
-// The recruitment page is opened inside the Telegram Mini App without the Buildin viewer UI.
+// Recruitment and participation terms open inside the Telegram Mini App.
 (function () {
   const HOST = 'team.arbstart.tech';
   const buttonId = 'join-team-button';
   let viewer = null;
   let frame = null;
+  let closeButton = null;
   let previousOverflow = '';
   let historyArmed = false;
 
@@ -72,6 +73,7 @@
     frame.setAttribute('allow', 'clipboard-read; clipboard-write');
 
     const close = document.createElement('button');
+    closeButton = close;
     close.type = 'button';
     close.className = 'recruitment-embedded__close';
     close.setAttribute('aria-label', 'Закрыть');
@@ -95,8 +97,15 @@
     document.body.style.overflow = previousOverflow;
   }
 
-  function openViewer(url) {
+  function openViewer(url, isTerms = false) {
     ensureViewer();
+    const title = isTerms ? 'Условия участия' : 'Набор';
+    viewer.setAttribute('aria-label', title);
+    frame.title = title;
+    closeButton.setAttribute('aria-label', isTerms ? 'Назад' : 'Закрыть');
+    closeButton.textContent = isTerms ? '‹' : '×';
+    closeButton.style.left = isTerms ? 'calc(env(safe-area-inset-left, 0px) + 10px)' : '';
+    closeButton.style.right = isTerms ? 'auto' : '';
     if (viewer.hidden) {
       previousOverflow = document.body.style.overflow;
       try {
@@ -119,12 +128,14 @@
     const target = event.target;
     if (!(target instanceof Element)) return;
     const anchor = target.closest('a[href]');
-    if (!anchor || anchor.id !== buttonId || anchor.hidden || anchor.closest('[hidden]')) return;
+    if (!anchor || (anchor.id !== buttonId && anchor.id !== 'application-button') || anchor.hidden || anchor.closest('[hidden]')) return;
     const url = allowedUrl(anchor.href);
     if (!url) return;
+    const isTerms = anchor.id === 'application-button';
+    if (isTerms && !/^\/win-win\/?$/.test(new URL(url).pathname)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    openViewer(url);
+    openViewer(url, isTerms);
   }, true);
 
   window.addEventListener('popstate', () => {
