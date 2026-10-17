@@ -1,4 +1,5 @@
 import { normalizeTelegramUser, formatProfileDate } from './profile.js';
+import { resolveLaunchData } from './learning-auth-session.js';
 import { getApplicationViewState } from './application.js';
 import { DEFAULT_RUNTIME_CONFIG, getProfilePollInterval, mergeRuntimeConfig } from './runtime-config.js';
 import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './telegram-runtime.js';
@@ -6,6 +7,9 @@ import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './t
 const t = (text, values) => window.AppLanguage?.t(text, values) || text;
 
 const telegram = window.Telegram?.WebApp;
+// Signed Telegram login survives navigation to theory and paid lessons.
+try { resolveLaunchData(telegram?.initData || '', window.sessionStorage); }
+catch { /* Browsers with disabled storage still support live Telegram auth. */ }
 const hasTelegramContext = Boolean(telegram?.initData);
 const user = telegram?.initDataUnsafe?.user;
 const profile = normalizeTelegramUser(user);
