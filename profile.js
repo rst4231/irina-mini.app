@@ -5,6 +5,14 @@ export function formatRussianDayMonth(date = new Date()) {
   }).format(date);
 }
 
+export function formatProfileDate(date = new Date(), language = 'ru') {
+  const locale = language === 'en' ? 'en-US' : 'ru-RU';
+  const text = new Intl.DateTimeFormat(locale, {
+    weekday:'long',day:'numeric',month:'long',year:'numeric',
+  }).format(date);
+  return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1);
+}
+
 export function normalizeTelegramUser(user = {}) {
   const firstName = String(user.first_name || '').trim();
   const lastName = String(user.last_name || '').trim();

@@ -100,12 +100,20 @@
     .reviews-admin-item button {padding:7px 10px;border-radius:8px;border:1px solid #bad2f5;background:#e7f1ff;color:#1758b0;margin-right:8px;cursor:pointer}
     @media(min-width:740px) {.book-reviews{padding:18px}.review-list{margin-top:0}}
   </style>
+  <link rel="stylesheet" href="/book-theme.css" />
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/book-theme.js"></script>
   <script defer src="/zoom-lock.js"></script>
 </head>
 <body>
   <main class="page">
-    <a id="book-home-link" class="book-home-link" href="/" target="_self" hidden aria-label="Вернуться на главную страницу">Домой</a>
+    <div class="book-toolbar">
+      <a id="book-back-link" class="book-back-link" href="/" target="_self" aria-label="Назад"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg><span>Назад</span></a>
+      <div class="language-switch" role="group" aria-label="Language / Язык">
+        <button type="button" data-book-language="ru" lang="ru" aria-label="Русский" aria-pressed="true">RU</button>
+        <button type="button" data-book-language="en" lang="en" aria-label="English" aria-pressed="false">EN</button>
+      </div>
+    </div>
     <header class="intro">
       <span class="eyebrow">Библиотека арбитражника</span>
       <h1>Руководства по арбитражу трафика</h1>
@@ -136,7 +144,7 @@
         </div>
         <p>Забирайте руководство и используйте его как рабочую инструкцию перед каждым запуском.</p>
         <div class="purchase">
-          <div class="price" aria-label="690 рублей">690 ₽</div>
+          <div class="price" data-book-price="profit" aria-label="690 рублей">690 ₽</div>
           <a class="buy" href="https://app.lava.top/products/1a995492-be5d-4957-8dfb-29bb21d7f387" target="_blank" rel="noopener noreferrer external" data-external-purchase="profit">Перейти к покупке <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
         </div>
       </article>
@@ -182,7 +190,7 @@
         </ul>
         <p>Внутри не просто теория, а логика действий: от выбора ниши до запуска и оптимизации рекламных кампаний.</p>
         <div class="purchase">
-          <div class="price" aria-label="590 рублей">590 ₽</div>
+          <div class="price" data-book-price="beginner" aria-label="590 рублей">590 ₽</div>
           <a class="buy" href="https://app.lava.top/products/cfdceb95-cf9d-49d6-babc-736ade4edbc6" target="_blank" rel="noopener noreferrer external" data-external-purchase="beginner">Перейти к покупке <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></a>
         </div>
       </article>
@@ -220,6 +228,8 @@
     </section>
     <footer class="footer">© 2018–2026</footer>
   </main>
+  <script defer src="/book-locale.js"></script>
+  <script defer src="/book-i18n.js"></script>
   <script defer src="/book-checkout.js"></script>
   <script defer src="/book-reviews.js"></script>
 </body>

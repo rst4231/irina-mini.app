@@ -2,7 +2,7 @@
   // Product links always remain ordinary external anchors for browsers.
   // In Telegram Mini Apps, the official openLink API opens an external
   // browser/new tab without navigating away from the Mini App.
-  const home = document.getElementById('book-home-link');
+  const home = document.getElementById('book-back-link');
   if (home) {
     const telegram = window.Telegram?.WebApp;
     const directMiniApp = Boolean(telegram?.initData);
@@ -22,9 +22,17 @@
       ? window.location.hash : '';
     if (directMiniApp || savedHome) {
       home.href = savedHome || '/' + telegramHash;
-      home.hidden = false;
     }
   }
+
+  home?.addEventListener('click', event => {
+    let internalReferrer = false;
+    try { internalReferrer = new URL(document.referrer).origin === window.location.origin; } catch {}
+    if (internalReferrer && window.history.length > 1) {
+      event.preventDefault();
+      window.history.back();
+    }
+  });
 
   document.querySelectorAll('a[data-external-purchase]').forEach((link) => {
     link.addEventListener('click', (event) => {

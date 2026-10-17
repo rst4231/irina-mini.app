@@ -1,0 +1,35 @@
+.page {padding-top:calc(76px + env(safe-area-inset-top,0px))}
+.book-toolbar {height:0}
+.book-back-link {position:fixed;top:calc(16px + env(safe-area-inset-top,0px));left:max(16px,calc((100vw - 560px)/2));z-index:1000;display:inline-flex;align-items:center;justify-content:center;gap:7px;height:42px;min-width:104px;padding:0 15px;border:1px solid #b7cce2;border-radius:999px;background:#eff6ff;color:#174368;box-shadow:0 4px 14px #0a2c4814;font:800 13px/1 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-decoration:none}
+.book-back-link svg {width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.book-back-link:focus-visible {outline:3px solid #258bdf;outline-offset:3px}
+.language-switch {display:inline-flex;gap:3px;padding:4px;border:1px solid #d4e3fb;border-radius:14px;background:#fff;box-shadow:0 5px 18px #315b9110}
+.language-switch {position:fixed;top:calc(13px + env(safe-area-inset-top,0px));right:max(16px,calc((100vw - 560px)/2));z-index:1000}
+.language-switch button {border:0;border-radius:10px;min-width:44px;min-height:36px;padding:7px 12px;font:inherit;font-size:13px;font-weight:800;background:transparent;color:#536d91;cursor:pointer}
+.language-switch button[aria-pressed="true"] {background:#e7f0ff;color:#185fc8}
+.language-switch button:focus-visible {outline:2px solid #347ef4;outline-offset:2px}
+:root[data-theme="dark"] {color-scheme:dark;background:#0c1424;color:#e6edfa}
+[data-theme="dark"] body {background:radial-gradient(ellipse 110% 450px at 50% -140px,#18345c,transparent),linear-gradient(180deg,#0c1424,#111d30 58%,#0c1424)}
+[data-theme="dark"] .book, [data-theme="dark"] .book-reviews {background:#162237;border-color:#293951;box-shadow:0 16px 44px #0003}
+[data-theme="dark"] .intro p,[data-theme="dark"] .book h2 small,[data-theme="dark"] .book-reviews>p {color:#a4b5ce}
+[data-theme="dark"] .book p,[data-theme="dark"] .points li,[data-theme="dark"] .review-text {color:#c0cde0}
+[data-theme="dark"] .book strong,[data-theme="dark"] .features-title,[data-theme="dark"] .review-person-info strong,[data-theme="dark"] .review-form label,[data-theme="dark"] .review-stars-label {color:#e4edfc}
+[data-theme="dark"] .cover-bg {background:linear-gradient(145deg,#223754,#162237)}
+[data-theme="dark"] .eyebrow,[data-theme="dark"] .benefits span,[data-theme="dark"] .points li::before {background:#203653;border-color:#324e73;color:#a9ceff}
+[data-theme="dark"] .purchase,[data-theme="dark"] .review-form-toggle,[data-theme="dark"] .reviews-admin-item {border-color:#31405a}
+[data-theme="dark"] .price {color:#d0e3ff}
+[data-theme="dark"] .footer,[data-theme="dark"] .reviews-empty,[data-theme="dark"] .review-meta,[data-theme="dark"] .book-rating .rating-count {color:#a0b0c8}
+[data-theme="dark"] .book-back-link,[data-theme="dark"] .language-switch,[data-theme="dark"] .reviews-more,[data-theme="dark"] .reviews-admin-item button {background:#1b2c40;border-color:#3b526c;color:#edf6ff}
+[data-theme="dark"] .language-switch button {color:#b6c6dd}
+[data-theme="dark"] .language-switch button[aria-pressed="true"] {background:#315b91;color:#fff}
+[data-theme="dark"] .book-rating {background:#142238ed;border-color:#425875;color:#e4edfc;box-shadow:0 4px 17px #0005}
+[data-theme="dark"] .review-item,[data-theme="dark"] .review-form {background:#111d30;border-color:#30415d}
+[data-theme="dark"] .review-form input:not([type="hidden"]),[data-theme="dark"] .review-form textarea {background:#18273d;border-color:#456080;color:#e5edfa}
+[data-theme="dark"] .review-form input::placeholder,[data-theme="dark"] .review-form textarea::placeholder {color:#a2b4cf;opacity:1}
+[data-theme="dark"] .review-avatar {background:#29415f;color:#b9d8ff}
+[data-theme="dark"] .review-star:not(.is-selected):not([aria-checked="true"]) {color:#8b9cb6}
+[data-theme="dark"] .review-more,[data-theme="dark"] .review-form-toggle summary {color:#91bfff}
+[data-theme="dark"] .reviews-message {background:#213a5b;color:#c2ddff!important}
+.reviews-message.is-error {background:#fff0f0;color:#9f263b!important}
+[data-theme="dark"] .reviews-message.is-error {background:#452633;color:#ffc4ce!important}
+[data-theme="dark"] .reviews-admin {border-color:#344966}

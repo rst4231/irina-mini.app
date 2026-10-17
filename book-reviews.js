@@ -1,4 +1,5 @@
 (() => {
+  const t = text => window.BookPage?.t(text) || text;
   const panels = [...document.querySelectorAll('[data-book-reviews]')];
   if (!panels.length) return;
   const telegram = window.Telegram?.WebApp;
@@ -7,7 +8,7 @@
   const isAdminCandidate = isTelegram && String(telegramUser.id) === '160628165';
   const admin = document.getElementById('reviews-admin');
   const adminList = document.getElementById('reviews-admin-list');
-  const state = {reviews: [], stats: [], nextOffset: null, loading: false};
+  const state = {reviews: [], stats: [], nextOffset: null, loading: false, loaded: false, error: false};
   const ratingValues = new Map();
 
   function el(tag, className = '', text) {
@@ -18,7 +19,7 @@
   }
   function avatar(review) {
     const circle = el('div','review-avatar');
-    circle.textContent = [...String(review.author_name || '').trim()][0]?.toLocaleUpperCase('ru-RU') || 'Ч';
+    circle.textContent = [...String(review.author_name || '').trim()][0]?.toLocaleUpperCase('ru-RU') || 'R';
     return circle;
   }
   function item(review, forModeration = false) {
@@ -26,7 +27,7 @@
     const header = el('div','review-person');
     header.append(avatar(review));
     const info = el('div','review-person-info');
-    info.append(el('strong','',review.author_name || 'Читатель'));
+    info.append(el('strong','',review.author_name || t('Читатель')));
     const meta = el('div','review-meta');
     const score = Number(review.rating);
     const stars = Number.isInteger(score) && score >= 1 && score <= 5
@@ -37,7 +38,7 @@
     card.append(header);
     const paragraph = el('p','review-text is-collapsed',review.review_text);
     card.append(paragraph);
-    const toggle = el('button','review-more','Читать полностью');
+    const toggle = el('button','review-more',t('Читать полностью'));
     toggle.type = 'button';
     toggle.hidden = true;
     card.append(toggle);
@@ -46,16 +47,16 @@
     });
     toggle.addEventListener('click', () => {
       const nowCollapsed = paragraph.classList.toggle('is-collapsed');
-      toggle.textContent = nowCollapsed ? 'Читать полностью' : 'Свернуть';
+      toggle.textContent = nowCollapsed ? t('Читать полностью') : t('Свернуть');
     });
     if (forModeration) {
       const actions = el('div','review-actions');
-      const publish = el('button','','Опубликовать');
-      const remove = el('button','','Удалить');
+      const publish = el('button','',t('Опубликовать'));
+      const remove = el('button','',t('Удалить'));
       publish.type = remove.type = 'button';
       publish.addEventListener('click', () => moderate(review.id,'approve'));
       remove.addEventListener('click', () => {
-        if (window.confirm('Удалить отзыв окончательно?')) moderate(review.id,'delete');
+        if (window.confirm(t('Удалить отзыв окончательно?'))) moderate(review.id,'delete');
       });
       actions.append(publish,remove);
       card.append(actions);
@@ -68,7 +69,7 @@
       const list = panel.querySelector('[data-reviews-list]');
       list.replaceChildren();
       const reviews = state.reviews.filter(r => r.book_key === book);
-      if (!reviews.length) list.append(el('p','reviews-empty','Пока нет отзывов об этой книге.'));
+      if (!reviews.length) list.append(el('p','reviews-empty',t(state.error ? 'Отзывы временно недоступны.' : state.loaded ? 'Пока нет отзывов об этой книге.' : 'Загружаем отзывы…')));
       else reviews.forEach(r => list.append(item(r)));
       panel.querySelector('[data-reviews-more]').hidden = state.nextOffset == null;
       const badge = document.querySelector('[data-rating-badge="' + book + '"]');
@@ -77,9 +78,9 @@
         const count = Number(agg?.count || 0);
         badge.hidden = count === 0;
         if (count) {
-          badge.querySelector('[data-rating-average]').textContent = Number(agg.average).toFixed(1).replace('.',',');
+          badge.querySelector('[data-rating-average]').textContent = Number(agg.average).toLocaleString(window.BookPage?.language === 'en' ? 'en-US' : 'ru-RU',{minimumFractionDigits:1,maximumFractionDigits:1});
           badge.querySelector('[data-rating-count]').textContent = '(' + count + ')';
-          badge.setAttribute('aria-label','Средний рейтинг ' + Number(agg.average).toFixed(1) + ' из 5. Оценок: ' + count);
+          badge.setAttribute('aria-label',window.BookPage?.language === 'en' ? 'Average rating ' + Number(agg.average).toFixed(1) + ' out of 5. Ratings: ' + count : 'Средний рейтинг ' + Number(agg.average).toFixed(1) + ' из 5. Оценок: ' + count);
         }
       }
     }
@@ -95,6 +96,8 @@
       state.reviews = more ? [...state.reviews,...(json.reviews || [])] : (json.reviews || []);
       state.stats = json.stats || [];
       state.nextOffset = json.nextOffset == null ? null : Number(json.nextOffset);
+      state.loaded = true;
+      state.error = false;
       render();
     } finally {
       state.loading = false;
@@ -102,10 +105,10 @@
   }
   function message(form, text, failed = false) {
     const node = form.querySelector('[data-review-message]');
-    node.textContent = text;
+    node.dataset.reviewMessage = text;
+    node.textContent = t(text);
     node.hidden = !text;
-    node.style.color = failed ? '#b12f44' : '';
-    node.style.background = failed ? '#fff0f0' : '';
+    node.classList.toggle('is-error',failed);
   }
   for (const panel of panels) {
     const book = panel.dataset.bookReviews;
@@ -178,10 +181,10 @@
       if (!response.ok||!json.ok) return;
       admin.hidden=false;
       adminList.replaceChildren();
-      if (!json.reviews?.length) adminList.append(el('p','reviews-empty','Нет отзывов на модерации.'));
+      if (!json.reviews?.length) adminList.append(el('p','reviews-empty',t('Нет отзывов на модерации.')));
       else json.reviews.forEach(r => {
         const row=el('div','reviews-admin-item');
-        row.append(el('strong','',r.book_key==='profit'?'Как лить в плюс':'От А до Я'));
+        row.append(el('strong','',r.book_key==='profit'?t('Как лить в плюс'):t('От А до Я')));
         row.append(item(r,true));
         adminList.append(row);
       });
@@ -197,10 +200,15 @@
       const json=await response.json();
       if (!response.ok||!json.ok||!json.updated) throw new Error('moderation_failed');
       await Promise.all([loadAdmin(),loadReviews()]);
-    } catch {window.alert('Не удалось изменить статус отзыва. Попробуйте ещё раз.');}
+    } catch {window.alert(t('Не удалось изменить статус отзыва. Попробуйте ещё раз.'));}
   }
-  loadReviews().catch(() => panels.forEach(panel => {
-    panel.querySelector('[data-reviews-list]').replaceChildren(el('p','reviews-empty','Отзывы временно недоступны.'));
-  }));
+  window.addEventListener('booklanguagechange',() => {
+    render();
+    document.querySelectorAll('[data-review-message]').forEach(node => {
+      if (node.dataset.reviewMessage) node.textContent = t(node.dataset.reviewMessage);
+    });
+    if (isAdminCandidate) loadAdmin();
+  });
+  loadReviews().catch(() => {state.error = true; render();});
   loadAdmin();
 })();

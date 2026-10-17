@@ -28,6 +28,7 @@ const DEFAULT_APPLICATION_COPY = {
 
 export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   version: 2,
+  book: {prices: {profit: {rub:690,usd:8.28},beginner: {rub:590,usd:7.08}}},
   features: {
     recruitment: true,
     about: true,
@@ -160,6 +161,12 @@ export function mergeRuntimeConfig(source = {}) {
   if (!source || typeof source !== 'object' || Array.isArray(source)) return result;
 
   result.version = safeVersion(source.version, result.version);
+  for (const book of ['profit','beginner']) {
+    for (const currency of ['rub','usd']) {
+      const value = source.book?.prices?.[book]?.[currency];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0 && value < 1000000) result.book.prices[book][currency] = value;
+    }
+  }
 
   if (source.features && typeof source.features === 'object') {
     for (const key of Object.keys(result.features)) {

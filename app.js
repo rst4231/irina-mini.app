@@ -1,7 +1,9 @@
-import { normalizeTelegramUser } from './profile.js';
+import { normalizeTelegramUser, formatProfileDate } from './profile.js';
 import { getApplicationViewState } from './application.js';
 import { DEFAULT_RUNTIME_CONFIG, getProfilePollInterval, mergeRuntimeConfig } from './runtime-config.js';
 import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './telegram-runtime.js';
+
+const t = (text, values) => window.AppLanguage?.t(text, values) || text;
 
 const telegram = window.Telegram?.WebApp;
 const hasTelegramContext = Boolean(telegram?.initData);
@@ -28,7 +30,7 @@ const appContent = document.querySelector('.app-content');
 const avatar = document.getElementById('profile-avatar');
 const initial = document.getElementById('profile-initial');
 const name = document.getElementById('profile-name');
-const username = document.getElementById('profile-username');
+const profileDate = document.getElementById('profile-date');
 const applicationCard = document.getElementById('application-card');
 const applicationIcon = document.querySelector('.application-icon');
 const applicationStatus = document.getElementById('application-status');
@@ -69,6 +71,7 @@ let configTimer = null;
 let versionTimer = null;
 let freshnessTimer = null;
 let profileLoadInFlight = false;
+let profileLoadFailed = false;
 let configLoadInFlight = false;
 let versionCheckInFlight = false;
 let versionReloadScheduled = false;
@@ -188,26 +191,31 @@ function queuePendingActionRefreshes() {
 function showSyncError(show) {
   if (!syncError) return;
   syncError.hidden = !show;
-  if (show && syncErrorText) syncErrorText.textContent = runtimeConfig.copy.syncError;
-  if (syncRetryButton) syncRetryButton.textContent = runtimeConfig.copy.retry;
+  if (show && syncErrorText) syncErrorText.textContent = t(runtimeConfig.copy.syncError);
+  if (syncRetryButton) syncRetryButton.textContent = t(runtimeConfig.copy.retry);
 }
 
 function formatFreshnessText() {
   if (!lastProfileSavedAt || !runtimeConfig.ui.showFreshness) return '';
   const ageMinutes = Math.max(0, Math.floor((Date.now() - lastProfileSavedAt) / 60000));
   if (lastProfileStale) {
-    const time = new Date(lastProfileSavedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-    return runtimeConfig.copy.cachedAt.replace('{time}', time);
+    const time = new Date(lastProfileSavedAt).toLocaleTimeString(window.AppLanguage?.language === 'en' ? 'en-US' : 'ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return t(runtimeConfig.copy.cachedAt).replace('{time}', time);
   }
-  if (ageMinutes < 1) return runtimeConfig.copy.updatedNow;
-  return runtimeConfig.copy.updatedMinutes.replace('{n}', String(ageMinutes));
+  if (ageMinutes < 1) return t(runtimeConfig.copy.updatedNow);
+  return t(runtimeConfig.copy.updatedMinutes).replace('{n}', String(ageMinutes));
 }
 
 function renderFreshness() {
+  renderProfileDate();
   if (!freshnessIndicator) return;
   const text = formatFreshnessText();
   freshnessIndicator.textContent = text;
   freshnessIndicator.hidden = !text;
+}
+
+function renderProfileDate() {
+  if (profileDate) profileDate.textContent = formatProfileDate(new Date(),window.AppLanguage?.language || 'ru');
 }
 
 function scheduleFreshnessTick() {
@@ -301,10 +309,10 @@ function setResourceContent(button, { title, subtitle, url, badge }) {
   const titleElement = button.querySelector('.resource-title');
   const subtitleElement = button.querySelector('.resource-subtitle');
   const badgeElement = button.querySelector('.resource-badge');
-  if (titleElement) titleElement.textContent = title;
-  if (subtitleElement) subtitleElement.textContent = subtitle;
-  if (badgeElement && badge) badgeElement.textContent = badge;
-  if (title) button.setAttribute('aria-label', title);
+  if (titleElement) titleElement.textContent = t(title);
+  if (subtitleElement) subtitleElement.textContent = t(subtitle);
+  if (badgeElement && badge) badgeElement.textContent = t(badge);
+  if (title) button.setAttribute('aria-label', t(title));
 }
 
 function renderVisibility() {
@@ -350,15 +358,15 @@ function applyRuntimeConfig(config) {
   footerChannel.href = runtimeConfig.links.channel;
 
   const trustedTitle = trustedByBlock.querySelector('.trusted-by-title');
-  if (trustedTitle?.childNodes?.[1]) trustedTitle.childNodes[1].nodeValue = runtimeConfig.copy.trustedByTitle;
+  if (trustedTitle?.childNodes?.[1]) trustedTitle.childNodes[1].nodeValue = t(runtimeConfig.copy.trustedByTitle);
 
   const outsideTitle = outsideTelegramScreen.querySelector('h1');
   const outsideDescription = outsideTelegramScreen.querySelector('p');
   const outsideButton = outsideTelegramScreen.querySelector('.outside-telegram-button');
-  if (outsideTitle) outsideTitle.textContent = runtimeConfig.copy.outsideTitle;
-  if (outsideDescription) outsideDescription.textContent = runtimeConfig.copy.outsideDescription;
+  if (outsideTitle) outsideTitle.textContent = t(runtimeConfig.copy.outsideTitle);
+  if (outsideDescription) outsideDescription.textContent = t(runtimeConfig.copy.outsideDescription);
   if (outsideButton) {
-    outsideButton.textContent = runtimeConfig.copy.outsideButton;
+    outsideButton.textContent = t(runtimeConfig.copy.outsideButton);
     outsideButton.href = runtimeConfig.links.outsideBot;
   }
 
@@ -384,8 +392,8 @@ function renderApplicationStatus(data, { stale = false } = {}) {
   applicationCard.classList.remove('is-incomplete', 'is-complete', 'is-approved', 'is-terms', 'is-rejected');
   applicationCard.classList.add(`is-${state.tone}`);
   applicationIcon.innerHTML = APPLICATION_ICONS[state.icon] || APPLICATION_ICONS.form;
-  applicationStatus.textContent = state.status;
-  applicationDescription.textContent = state.description;
+  applicationStatus.textContent = t(state.status);
+  applicationDescription.textContent = t(state.description);
 
   const toneChanged = Boolean(previousApplicationTone && previousApplicationTone !== state.tone);
   if (toneChanged) {
@@ -402,7 +410,7 @@ function renderApplicationStatus(data, { stale = false } = {}) {
   previousApplicationTone = state.tone;
 
   if (state.action) {
-    applicationButton.textContent = state.action.label;
+    applicationButton.textContent = t(state.action.label);
     applicationButton.append(' ');
     const arrow = document.createElement('span');
     arrow.className = 'application-arrow';
@@ -413,7 +421,7 @@ function renderApplicationStatus(data, { stale = false } = {}) {
     applicationButton.target = state.action.target || '_self';
     applicationButton.dataset.closeMiniApp = state.action.closeMiniApp ? 'true' : 'false';
     const actionHint = state.tone === 'approved' ? '' : (state.action.hint || '');
-    applicationHint.textContent = actionHint;
+    applicationHint.textContent = t(actionHint);
     applicationHint.hidden = !actionHint;
     if (state.action.target === '_blank') applicationButton.rel = 'noopener noreferrer';
     else applicationButton.removeAttribute('rel');
@@ -429,16 +437,17 @@ function renderApplicationStatus(data, { stale = false } = {}) {
 
   const pending = getPendingAction();
   const syncText = pending ? runtimeConfig.copy.checkingChanges : (stale ? runtimeConfig.copy.staleData : '');
-  applicationSyncHint.textContent = syncText;
+  applicationSyncHint.textContent = t(syncText);
   applicationSyncHint.hidden = !syncText;
 }
 
 function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
+  profileLoadFailed = false;
   lastProfileData = data;
   lastProfileStale = stale;
   lastProfileSavedAt = Number(savedAt) || Date.now();
   const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
-  name.textContent = `Привет, ${getGreetingName(sendPulseName)}!`;
+  name.textContent = t('Привет, {name}!',{name:t(getGreetingName(sendPulseName))});
   renderVisibility();
   if (!data?.hasPaymentTag || data.applicationRejected) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);
@@ -523,12 +532,13 @@ async function loadSendPulseProfile({ silent = false } = {}) {
     if (cached?.data) {
       renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
     } else if (!silent) {
+      profileLoadFailed = true;
       setApplicationLoading(false);
       applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms', 'is-rejected');
       applicationCard.classList.add('is-incomplete');
       applicationIcon.innerHTML = APPLICATION_ICONS.form;
-      applicationStatus.textContent = 'Не удалось проверить анкету';
-      applicationDescription.textContent = 'Попробуйте открыть приложение ещё раз';
+      applicationStatus.textContent = t('Не удалось проверить анкету');
+      applicationDescription.textContent = t('Попробуйте открыть приложение ещё раз');
       applicationButton.hidden = true;
       applicationHint.hidden = true;
       applicationSyncHint.hidden = true;
@@ -579,15 +589,12 @@ syncRetryButton?.addEventListener('click', () => {
   refreshAppState({ force: true });
 });
 
-name.textContent = `Привет, ${getGreetingName()}!`;
+name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
 initial.textContent = profile.initial;
 footerYear.textContent = new Date().getFullYear();
 scheduleFreshnessTick();
 
-if (profile.username) {
-  username.textContent = profile.username;
-  username.hidden = false;
-}
+renderProfileDate();
 
 if (profile.photoUrl) {
   avatar.src = profile.photoUrl;
@@ -639,5 +646,15 @@ async function startApp() {
     appShell.hidden = false;
   }
 }
+
+window.addEventListener('irinalanguagechange', () => {
+  applyRuntimeConfig(runtimeConfig);
+  if (lastProfileData) renderProfileData(lastProfileData, {stale:lastProfileStale,savedAt:lastProfileSavedAt});
+  else name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
+  if (profileLoadFailed) {
+    applicationStatus.textContent = t('Не удалось проверить анкету');
+    applicationDescription.textContent = t('Попробуйте открыть приложение ещё раз');
+  }
+});
 
 startApp();

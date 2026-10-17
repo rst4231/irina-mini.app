@@ -42,13 +42,14 @@ test('loads the inline recruitment viewer and keeps the HTTPS recruitment link',
   assert.match(html, /id="join-team-button"[\s\S]*?target="_self"/);
 });
 
-test('profile greets the user by first name without a date', async () => {
+test('profile greets the user by first name and shows the localized date instead of the username', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
   assert.match(html, /Привет, Пользователь!/);
-  assert.doesNotMatch(html, /id="profile-date"|class="profile-date-row"|skeleton-line-date/);
+  assert.match(html, /id="profile-date"/);
+  assert.doesNotMatch(html, /id="profile-username"/);
   assert.match(source, /getGreetingName\(sendPulseName\)/);
-  assert.doesNotMatch(source, /date\.textContent|formatRussianDayMonth/);
+  assert.match(source, /formatProfileDate\(new Date\(\)/);
 });
 
 test('approved application no longer displays action timing hint', async () => {
@@ -72,12 +73,12 @@ test('guide library is internal and both native pages disable zoom', async () =>
   assert.match(book, /book-beginner\.webp/);
 });
 
-test('book Home button appears only in Telegram context and leaves Lava checkout external', async () => {
+test('book Back button keeps the Telegram return context and leaves Lava checkout external', async () => {
   const book = await readFile(new URL('../book.html', import.meta.url), 'utf8');
   const checkout = await readFile(new URL('../book-checkout.js', import.meta.url), 'utf8');
   const app = await readFile(new URL('../app.js', import.meta.url), 'utf8');
-  assert.match(book, /id="book-home-link"[^>]*href="\/"[^>]*target="_self"[^>]*hidden/);
-  assert.match(book, /\.book-home-link\[hidden\]/);
+  assert.match(book, /id="book-back-link"[^>]*href="\/"[^>]*target="_self"/);
+  assert.match(checkout, /window\.history\.back\(\)/);
   assert.match(checkout, /directMiniApp \|\| savedHome/);
   assert.match(checkout, /home\.href = savedHome \|\| '\/' \+ telegramHash/);
   assert.match(app, /if \(hasTelegramContext\)/);
