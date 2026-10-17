@@ -25,7 +25,7 @@ test('runtime config still supports feature switches and UI settings', () => {
   assert.equal(config.features.about, true);
   assert.equal(config.ui.accent, '#112233');
   assert.equal(config.ui.accentSecondary, '#abcdef');
-  assert.deepEqual(config.ui.resourceOrder, ['book', 'about', 'recruitment', 'trustedBy', 'mentor']);
+  assert.deepEqual(config.ui.resourceOrder, ['book', 'about', 'recruitment', 'theory', 'practice', 'trustedBy', 'mentor']);
   assert.equal(config.ui.showFreshness, false);
   assert.equal(config.ui.animations, false);
 });
