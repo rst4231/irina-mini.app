@@ -162,7 +162,10 @@ function renderMarkdown(source){
     const illustration=line.match(/^!\[([^\]]*)\]\((https:\/\/irina-learning-api\.cpateammail\.workers\.dev\/media\/assets\/[A-Za-z0-9-]+\.(?:png|jpe?g|webp|gif|php))\)$/i);
     if(illustration){
       flushParagraph();flushQuote();closeList();
-      output+='<figure class="lesson-figure"><img loading="lazy" decoding="async" src="'+esc(illustration[2])+'" alt="'+esc(illustration[1]||'Иллюстрация к уроку')+'"></figure>';
+      // WebViews on iOS may not be able to reach workers.dev without a VPN.
+      // Proxy the same asset through this app's own domain instead.
+      const imageUrl=illustration[2].replace(/^https:\/\/irina-learning-api\.cpateammail\.workers\.dev\/media\//i,'/learning-media/');
+      output+='<figure class="lesson-figure"><img loading="lazy" decoding="async" src="'+esc(imageUrl)+'" alt="'+esc(illustration[1]||'Иллюстрация к уроку')+'"></figure>';
       continue;
     }
     if(/^\|/.test(line) && i+1<lines.length && isDivider(lines[i+1])){
