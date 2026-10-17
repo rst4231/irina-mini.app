@@ -22,7 +22,7 @@ test('preserves application actions and URLs', () => {
 
   assert.equal(incomplete.action.url, 'https://t.me/rstshelp_bot?start=69de0afdde3f2d88240a95e8');
   assert.equal(approved.action.url, 'https://t.me/rstshelp_bot?start=6a3d21d4694618648d009d8d');
-  assert.equal(terms.action.url, 'https://buildin.ai/arbstart/share/292c0b0f-8ae4-483a-89f7-4892ed10b70f');
+  assert.equal(terms.action.url, 'https://team.arbstart.tech/win-win/');
   assert.equal(terms.action.label, 'Посмотреть условия');
 });
 
