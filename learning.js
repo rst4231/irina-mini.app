@@ -18,6 +18,7 @@ let lessons = [];
 let lessonMap = new Map();
 let settings = {practice_price_stars:'1200',bundle_price_stars:'3600',purchase_url:purchaseURL};
 let activeSection = null;
+let purchasesPromise = null;
 const esc = value => String(value ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 function theme(){
   let theme = tg?.colorScheme;
@@ -84,6 +85,20 @@ async function api(mode, params={}) {
     return Promise.any([backend(),fetchLearning(LESSONS_PUBLIC_API+path,{mode:'cors',credentials:'omit'})]);
   }
   return backend();
+}
+function loadPurchases(){
+  if(!purchasesPromise)purchasesPromise=fetchLearning('/api/learning-authorize',{
+    method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',
+    body:JSON.stringify({section:'all',initData:telegramInitData()}),
+  }).then(data=>Object.fromEntries(sections.map(s=>[s.id,data.access?.[s.id]===true])))
+    .catch(error=>error.status===403?Object.fromEntries(sections.map(s=>[s.id,false])):null);
+  return purchasesPromise;
+}
+function purchaseCheckNotice(){
+  return '<div class="hint" role="status">Не удалось проверить купленные разделы. Если вы уже оплатили, повторная покупка не нужна. <button class="button-outline" id="retry-purchases" type="button">Проверить ещё раз</button></div>';
+}
+function bindPurchaseRetry(){
+  document.getElementById('retry-purchases')?.addEventListener('click',()=>location.reload());
 }
 function header(title,subtitle,badges=[]){
   return '<div class="hero"><h1>'+esc(title)+'</h1><p>'+esc(subtitle)+'</p>'+(badges.length?'<div class="hero-data">'+badges.map(t=>'<span class="hero-pill">'+esc(t)+'</span>').join('')+'</div>':'')+'</div>';
@@ -210,22 +225,35 @@ async function showTheory(){
 }
 async function showStore(){
   app.innerHTML=header('Практические инструкции','Выберите тему или заберите сразу четыре раздела. Каждая покупка открывает все материалы выбранной темы.', ['4 направления','Оплата в Telegram Stars'])+'<div class="status">Загружаем каталог…</div>';
-  try{const r=await api('catalog');lessons=r.lessons||lessons;settings={...settings,...r.settings};}catch{/* Keep the catalog accessible during a temporary content outage. */ }
+  const [catalog,access]=await Promise.all([api('catalog').catch(()=>null),loadPurchases()]);
+  if(catalog){lessons=catalog.lessons||lessons;settings={...settings,...catalog.settings};}
   const price=esc(settings.practice_price_stars||'1200');
   const html=sections.map(s=>{
     const count=lessons.filter(l=>l.section===s.id).length;
-    return '<article class="product"><div class="product-top"><span class="product-icon">'+s.emoji+'</span><h2>'+esc(s.title)+'</h2></div><p>'+esc(s.description)+'</p><span class="product-meta">'+(count?count+' материалов в разделе':'Полный раздел с инструкциями')+'</span><div class="product-footer"><span class="stars">'+price+' ⭐</span><a class="button-main" href="/practice?topic='+s.id+'">Выбрать →</a></div></article>';
+    const bought=access?.[s.id]===true;
+    return '<article class="product'+(bought?' product-purchased':'')+'"><div class="product-top"><span class="product-icon">'+s.emoji+'</span><h2>'+esc(s.title)+'</h2></div><p>'+esc(s.description)+'</p><span class="product-meta">'+(count?count+' материалов в разделе':'Полный раздел с инструкциями')+'</span><div class="product-footer">'+(bought?'<span class="purchase-badge">✓ Куплен</span>':access?'<span class="stars">'+price+' ⭐</span>':'<span class="product-meta">Проверка покупки недоступна</span>')+'<a class="button-main" href="/practice?topic='+s.id+'">'+(bought?'Перейти':access?'Выбрать':'Открыть')+' →</a></div></article>';
   }).join('');
-  app.innerHTML=header('Практические инструкции','Выберите нужную тему. В стоимость входит весь раздел, а не отдельная статья.', ['4 направления','Оплата в Telegram Stars'])+'<div class="product-grid">'+html+'</div><section class="bundle"><span class="bundle-tag">Комплект выгоднее</span><h2>Все практические инструкции</h2><p>Четыре раздела: креативы, инфраструктура Facebook Ads, Keitaro и запуск рекламы. Полный набор в одном пакете.</p><div class="bundle-footer"><span class="stars">'+esc(settings.bundle_price_stars||'3600')+' ⭐</span>'+buyButton('Выбрать комплект')+'</div></section><footer class="foot">© 2018–'+new Date().getFullYear()+'</footer>';
+  const allBought=sections.every(s=>access?.[s.id]===true);
+  const hasPurchases=sections.some(s=>access?.[s.id]===true);
+  const bundle=access&&!allBought?'<section class="bundle"><span class="bundle-tag">Комплект выгоднее</span><h2>Все практические инструкции</h2><p>Четыре раздела: креативы, инфраструктура Facebook Ads, Keitaro и запуск рекламы. Полный набор в одном пакете.</p><div class="bundle-footer"><span class="stars">'+esc(settings.bundle_price_stars||'3600')+' ⭐</span>'+buyButton('Выбрать комплект')+'</div></section>':'';
+  app.innerHTML=header('Практические инструкции',hasPurchases?'Купленные разделы уже доступны. Выберите тему и переходите к материалам.':'Выберите нужную тему. В стоимость входит весь раздел, а не отдельная статья.', ['4 направления',allBought?'Все разделы куплены':hasPurchases?'Есть купленные разделы':'Оплата в Telegram Stars'])+(access?'':purchaseCheckNotice())+'<div class="product-grid">'+html+'</div>'+bundle+'<footer class="foot">© 2018–'+new Date().getFullYear()+'</footer>';
+  bindPurchaseRetry();
 }
 async function showSection(id){
   const s=sectionById(id);if(!s){location.replace('/practice');return;}
   activeSection=id;
-  app.innerHTML=header(s.title,s.description,[settings.practice_price_stars+' ⭐ за раздел'])+'<div class="status">Загружаем список материалов…</div>';
+  app.innerHTML=header(s.title,s.description)+'<div class="status">Загружаем материалы и проверяем доступ…</div>';
   try{
-    const r=await api('list',{section:id});lessons=r.lessons||[];lessonMap=new Map(lessons.map(x=>[x.id,x]));
-    try{const c=await api('catalog');settings={...settings,...c.settings};}catch{}
-    app.innerHTML=header(s.title,s.description,[lessons.length+' материалов',esc(settings.practice_price_stars||'1200')+' ⭐ за весь раздел'])+'<section class="section-panel"><h2>Что внутри</h2>'+lessonButtons(id,lessons)+'</section><section class="purchase-panel"><h2>Доступ ко всем материалам</h2><p>Стоимость раздела: '+esc(settings.practice_price_stars||'1200')+' ⭐. После покупки в боте доступ откроется сразу после подтверждения платежа.</p>'+buyButton('Перейти к покупке')+'</section><footer class="foot">© 2018–'+new Date().getFullYear()+'</footer>';
+    const [r,access,catalog]=await Promise.all([api('list',{section:id}),loadPurchases(),api('catalog').catch(()=>null)]);
+    lessons=r.lessons||[];lessonMap=new Map(lessons.map(x=>[x.id,x]));
+    if(catalog)settings={...settings,...catalog.settings};
+    const bought=access?.[id]===true;
+    const badges=[lessons.length+' материалов'];
+    if(bought)badges.push('✓ Куплен · Доступ открыт');
+    else if(access)badges.push((settings.practice_price_stars||'1200')+' ⭐ за весь раздел');
+    const purchasePanel=bought?'':access?'<section class="purchase-panel"><h2>Доступ ко всем материалам</h2><p>Стоимость раздела: '+esc(settings.practice_price_stars||'1200')+' ⭐. После покупки в боте доступ откроется сразу после подтверждения платежа.</p>'+buyButton('Перейти к покупке')+'</section>':purchaseCheckNotice();
+    app.innerHTML=header(s.title,s.description,badges)+'<section class="section-panel"><h2>'+(bought?'Ваши материалы':'Что внутри')+'</h2>'+lessonButtons(id,lessons)+'</section>'+purchasePanel+'<footer class="foot">© 2018–'+new Date().getFullYear()+'</footer>';
+    bindPurchaseRetry();
   }catch{failure();}
 }
 async function run(){

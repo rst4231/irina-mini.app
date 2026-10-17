@@ -30,7 +30,7 @@ export default {
         if(section!=='theory'){
           if((!initData&&!session)||initData.length>3500||session.length>800)return reply(403,{ok:false,error:'purchase_required'});
           // Validate Telegram session and confirmed purchase on the existing Vercel backend.
-          const check=await fetch(AUTH_URL,{method:'POST',headers:{'Content-Type':'application/json',...(session?{Cookie:session}:{})},body:JSON.stringify({initData,section}),redirect:'error',signal:AbortSignal.timeout(8000)});
+          const check=await fetch(AUTH_URL,{method:'POST',headers:{'Content-Type':'application/json',...(session?{Cookie:session}:{})},body:JSON.stringify({initData,section}),redirect:'manual',signal:AbortSignal.timeout(8000)});
           if(!check.ok)return reply(check.status===403||check.status===401?403:503,{ok:false,error:check.status===403||check.status===401?'purchase_required':'auth_unavailable'});
           const grant=await check.json().catch(()=>null);
           if(grant?.ok!==true||grant?.authorized!==true||grant?.section!==section)return reply(403,{ok:false,error:'purchase_required'});

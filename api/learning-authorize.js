@@ -28,7 +28,7 @@ export default async function handler(req,res) {
   try{if(req.headers.origin && new URL(req.headers.origin).host!==req.headers.host)return respond(res,403,{ok:false,error:'invalid_origin'});}
   catch{return respond(res,403,{ok:false,error:'invalid_origin'});}
   const {section,initData}=req.body||{};
-  if(!Object.hasOwn(SECTION_TAGS,String(section||'')))return respond(res,400,{ok:false,error:'invalid_section'});
+  if(section!=='all'&&!Object.hasOwn(SECTION_TAGS,String(section||'')))return respond(res,400,{ok:false,error:'invalid_section'});
   if(!process.env.TELEGRAM_BOT_TOKEN||!process.env.SENDPULSE_API_KEY)
     return respond(res,503,{ok:false,error:'auth_not_configured'});
   const user = typeof initData==='string' && initData.length>=20 && initData.length<=3500
@@ -47,6 +47,9 @@ export default async function handler(req,res) {
     if(!response.ok)throw new Error('sendpulse_error_'+response.status);
     const payload=await response.json();
     const contact=payload?.data||payload;
+    if(section==='all')return respond(res,200,{ok:true,access:Object.fromEntries(
+      Object.keys(SECTION_TAGS).map(id=>[id,grantsLearningAccess(contact?.tags||[],id)])
+    )});
     const allowed=grantsLearningAccess(contact?.tags||[],section);
     if(!allowed)return respond(res,403,{ok:false,error:'purchase_required'});
     return respond(res,200,{ok:true,authorized:true,section});

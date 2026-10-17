@@ -16,7 +16,7 @@ function signedLaunch() {
 function response() {
   return {statusCode:200,setHeader(){},status(code){this.statusCode=code;return this;},json(body){this.body=body;return this;}};
 }
-async function authorize(t,{initData='',cookie='',tags=['Практика: Креативы']}={}) {
+async function authorize(t,{initData='',cookie='',tags=['Практика: Креативы'],section='creatives'}={}) {
   const savedToken=process.env.TELEGRAM_BOT_TOKEN;
   const savedKey=process.env.SENDPULSE_API_KEY;
   process.env.TELEGRAM_BOT_TOKEN=token;
@@ -33,7 +33,7 @@ async function authorize(t,{initData='',cookie='',tags=['Практика: Кр�
     return Response.json({data:{tags}});
   });
   const res=response();
-  await handler({method:'POST',headers:{cookie},body:{section:'creatives',initData}},res);
+  await handler({method:'POST',headers:{cookie},body:{section,initData}},res);
   return res;
 }
 
@@ -59,5 +59,24 @@ test('forged identity cannot reach SendPulse even with a purchase tag',async t=>
   const res=await authorize(t,{cookie:createLearningCookie(userId,'wrong-token')});
   assert.equal(res.statusCode,403);
   assert.equal(res.body.error,'purchase_required');
+  assert.equal(globalThis.fetch.mock.calls.length,0);
+});
+
+test('catalog purchases are verified once and the full-kit tag opens all four sections',async t=>{
+  const res=await authorize(t,{initData:signedLaunch(),section:'all',tags:['Практика: Все']});
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body,{ok:true,access:{creatives:true,infrastructure:true,keitaro:true,launch:true}});
+  assert.equal(globalThis.fetch.mock.calls.length,1);
+});
+
+test('catalog purchases only mark the section with a matching tag',async t=>{
+  const res=await authorize(t,{cookie:createLearningCookie(userId,token),section:'all'});
+  assert.equal(res.statusCode,200);
+  assert.deepEqual(res.body.access,{creatives:true,infrastructure:false,keitaro:false,launch:false});
+});
+
+test('catalog purchases never trust a forged identity',async t=>{
+  const res=await authorize(t,{cookie:createLearningCookie(userId,'wrong-token'),section:'all',tags:['Практика: Все']});
+  assert.equal(res.statusCode,403);
   assert.equal(globalThis.fetch.mock.calls.length,0);
 });
