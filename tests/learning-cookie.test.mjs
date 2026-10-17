@@ -46,3 +46,10 @@ test('paid lesson authentication keeps Telegram ID verification and matching Sen
   assert.match(worker,/Cookie:session/);
   assert.doesNotMatch(worker,/return reply\(200,\{ok:true,lesson\}\);\s*\/\//);
 });
+
+test('lesson titles, numbers and article links have no distracting underlines',async()=>{
+  const css=await fs.readFile(new URL('../learning.css',import.meta.url),'utf8');
+  assert.match(css,/\.learning-wrap \.lesson-list a\.lesson-row/);
+  assert.match(css,/\.learning-wrap \.lesson-list a\.lesson-row \*/);
+  assert.match(css,/\.learning-wrap \.lesson-prose a[^{]*\{[^}]*text-decoration:\s*none/s);
+});

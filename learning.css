@@ -41,3 +41,21 @@
 .lesson-table tr:nth-child(even){background:color-mix(in srgb,var(--accent-soft) 30%,var(--card))}
 @media(max-width:480px){.lesson-article{margin-left:-3px;margin-right:-3px;padding:19px 18px;border-radius:21px}.lesson-prose ol,.lesson-prose ul{padding:6px 12px}.lesson-prose ol>li{padding-left:36px}}
 @media(prefers-reduced-motion:reduce){.lesson-article,.lesson-prose *{scroll-behavior:auto!important}}
+
+
+/* Link labels should not look like underlined paragraphs: the entire row is clickable. */
+.learning-wrap a:link,
+.learning-wrap a:visited,
+.learning-wrap a:hover,
+.learning-wrap a:focus-visible {
+  text-decoration: none;
+}
+.learning-wrap .lesson-list a.lesson-row,
+.learning-wrap .lesson-list a.lesson-row * {
+  text-decoration: none;
+}
+.learning-wrap .lesson-prose a {
+  color: var(--accent);
+  font-weight: 720;
+  text-decoration: none;
+}
