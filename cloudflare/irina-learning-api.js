@@ -11,6 +11,23 @@ export default {
     const reply = (status, data) => new Response(JSON.stringify(data), {status, headers});
     const url = new URL(req.url);
     try {
+      if (url.pathname.startsWith('/media/assets/') && req.method === 'GET') {
+        const key = url.pathname.slice('/media/'.length);
+        if (!/^assets\/[a-z0-9-]{15,120}\.(?:png|jpg|jpeg|gif|webp|php)$/i.test(key))
+          return reply(400,{error:'invalid_media'});
+        const buffer = await env.LEARNING_MEDIA.get(key,{type:'arrayBuffer'});
+        if (!buffer) return reply(404,{error:'image_missing'});
+        const bytes=new Uint8Array(buffer);
+        const jpeg=bytes[0]===255&&bytes[1]===216;
+        const gif=bytes[0]===71&&bytes[1]===73&&bytes[2]===70;
+        const webp=bytes[0]===82&&bytes[1]===73&&bytes[2]===70&&bytes[3]===70;
+        const type=jpeg?'image/jpeg':gif?'image/gif':webp?'image/webp':'image/png';
+        return new Response(buffer,{status:200,headers:{
+          'Content-Type':type,'Cache-Control':'public,max-age=31536000,immutable',
+          'Cross-Origin-Resource-Policy':'cross-origin','Access-Control-Allow-Origin':'*',
+          'X-Content-Type-Options':'nosniff',
+        }});
+      }
       if (url.pathname === '/catalog' && req.method === 'GET') {
         const lessons = await env.LEARNING_DB.prepare('SELECT id,section,title,sort_order FROM learning_lessons_v2 WHERE published=1 ORDER BY section,sort_order').all();
         const values = await env.LEARNING_DB.prepare('SELECT key,value FROM learning_settings').all();
