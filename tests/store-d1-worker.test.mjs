@@ -86,3 +86,19 @@ test('purchase claim is durable, atomic, one attempt only',async()=>{
   const second=await rpc(env,'rpc/store_begin_purchase','POST','',{id:UUID});assert.deepEqual(second.body,[{claimed:false}]);
   env.db.close();
 });
+
+test('localized titles survive stock refresh but reset if supplier text changes',async()=>{
+  const env=makeEnv();
+  await rpc(env,'rpc/store_sync_products','POST','',{payload:[listing]});
+  env.db.prepare("UPDATE store_products SET title_ru='Аккаунт Facebook',title_en='Facebook account',category_ru='Facebook',category_en='Facebook' WHERE id=1").run();
+  await rpc(env,'rpc/store_sync_products','POST','',{payload:[{...listing,stock:7}]});
+  let result=await rpc(env,'store_products','GET','id=eq.1&select=title_ru,title_en,stock');
+  assert.equal(result.body[0].title_ru,'Аккаунт Facebook');
+  assert.equal(result.body[0].stock,7);
+  await rpc(env,'rpc/store_sync_products','POST','',{payload:[{...listing,title:'Different supplier account'}]});
+  result=await rpc(env,'store_products','GET','id=eq.1&select=title_ru,title_en,category_ru,translation_attempts');
+  assert.equal(result.body[0].title_ru,null);
+  assert.equal(result.body[0].title_en,null);
+  assert.equal(result.body[0].translation_attempts,0);
+  env.db.close();
+});
