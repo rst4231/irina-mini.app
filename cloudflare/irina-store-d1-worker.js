@@ -140,9 +140,10 @@ export function normalizedTranslation(original,translated){
 }
 async function translateValue(env,original,target,kind){
   if(kind==='category'&&CATEGORY_TRANSLATIONS[original]?.[target])return CATEGORY_TRANSLATIONS[original][target];
-  if(!THAI.test(original))return original;
+  const source=THAI.test(original)?'th':/[А-Яа-яЁё]/.test(original)?'ru':'en';
+  if(source===target||!/[\p{L}]/u.test(original))return original;
   const response=await env.AI.run('@cf/meta/m2m100-1.2b',{
-    text:original.replace(/\s*\|\s*/g,'; '),source_lang:'th',target_lang:target
+    text:original.replace(/\s*\|\s*/g,'; '),source_lang:source,target_lang:target
   });
   return normalizedTranslation(original,response?.translated_text);
 }
