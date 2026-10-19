@@ -11,6 +11,16 @@ const telegram = window.Telegram?.WebApp;
 try { resolveLaunchData(telegram?.initData || '', window.sessionStorage); }
 catch { /* Browsers with disabled storage still support live Telegram auth. */ }
 const hasTelegramContext = Boolean(telegram?.initData);
+if(hasTelegramContext){
+  // Nonblocking and idempotent: create the LH STORE personal account as soon as Irina opens.
+  // Server always verifies the Telegram signature; no browser user IDs are trusted.
+  fetch('/api/store/account',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({initData:telegram.initData,action:'list',page:0}),
+    cache:'no-store'
+  }).catch(()=>{});
+}
+
 const user = telegram?.initDataUnsafe?.user;
 const profile = normalizeTelegramUser(user);
 
