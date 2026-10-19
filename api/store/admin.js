@@ -48,7 +48,10 @@ export default async function handler(req,res){
       const categoryId=cursor.categories[cursor.index];
       if(!Number.isSafeInteger(categoryId))throw new Error('Invalid category cursor');
       const result=await syncBatch(categoryId,cursor.page,6);
-      if(result.items.length)await db('rpc/store_sync_products',{method:'POST',body:{payload:result.items}});
+      // Cloudflare D1 Worker accepts at most 200 listings per sync batch.
+      for(let offset=0;offset<result.items.length;offset+=200){
+        await db('rpc/store_sync_products',{method:'POST',body:{payload:result.items.slice(offset,offset+200)}});
+      }
       const next=result.nextPage?{...cursor,page:result.nextPage}:cursor.index+1<cursor.categories.length?{...cursor,index:cursor.index+1,page:1}:null;
       await setSetting('sync_cursor',next);
       return json(res,200,{ok:true,count:result.items.length,more:!!next});
