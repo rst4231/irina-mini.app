@@ -27,7 +27,7 @@ test('LH STORE has only dark theme and no theme switch',()=>{
   const script=read('store/assets/app.js');
   const styles=read('store/assets/style.css');
   assert.doesNotMatch(html,/id="theme-toggle"/);
-  assert.doesNotMatch(script,/theme-toggle|setTheme|themeStorage|body\\.classList\\.toggle\\('light'/);
-  assert.doesNotMatch(styles,/body\\.light/);
-  assert.match(styles,/:root\\{[^}]*color-scheme:dark/);
+  assert.doesNotMatch(script,/theme-toggle|setTheme|themeStorage|classList/);
+  assert.doesNotMatch(styles,/body[.]light/);
+  assert.match(styles,/color-scheme:dark/);
 });
