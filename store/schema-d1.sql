@@ -25,10 +25,18 @@ CREATE TABLE IF NOT EXISTS store_products (
  UNIQUE(provider,provider_listing_id)
 );
 CREATE INDEX IF NOT EXISTS store_products_visible ON store_products(published,stock);
+CREATE TABLE IF NOT EXISTS store_users (
+ telegram_id TEXT PRIMARY KEY,
+ first_name TEXT NOT NULL DEFAULT '',
+ username TEXT NOT NULL DEFAULT '',
+ created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+ updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
 CREATE TABLE IF NOT EXISTS store_orders (
  id TEXT PRIMARY KEY,
  lookup_hash TEXT NOT NULL UNIQUE,
  customer_email TEXT NOT NULL,
+ telegram_user_id TEXT REFERENCES store_users(telegram_id),
  product_id INTEGER NOT NULL REFERENCES store_products(id),
  product_title TEXT NOT NULL,
  quantity INTEGER NOT NULL CHECK(quantity BETWEEN 1 AND 20),
@@ -51,6 +59,7 @@ CREATE TABLE IF NOT EXISTS store_orders (
 CREATE INDEX IF NOT EXISTS store_orders_ip ON store_orders(ip_hash,created_at DESC);
 CREATE INDEX IF NOT EXISTS store_orders_date ON store_orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS store_orders_status ON store_orders(status);
+CREATE INDEX IF NOT EXISTS store_orders_telegram_user ON store_orders(telegram_user_id,created_at DESC);
 INSERT OR IGNORE INTO store_settings(key,value) VALUES
  ('markup_pct','45'),('checkout_enabled','false'),('supplier_resale_approved','false'),
  ('usdt_trc20_wallet','""'),('sync_cursor','null'),('auto_fulfillment_enabled','false');
@@ -64,3 +73,7 @@ INSERT OR IGNORE INTO store_settings(key,value) VALUES
 -- Existing D1: ALTER TABLE store_products ADD COLUMN category_ru TEXT;
 -- Existing D1: ALTER TABLE store_products ADD COLUMN category_en TEXT;
 -- Existing D1: ALTER TABLE store_products ADD COLUMN translation_attempts INTEGER NOT NULL DEFAULT 0;
+
+-- Existing Cloudflare D1: CREATE TABLE IF NOT EXISTS store_users (telegram_id TEXT PRIMARY KEY, first_name TEXT NOT NULL DEFAULT '', username TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')), updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
+-- Existing Cloudflare D1: ALTER TABLE store_orders ADD COLUMN telegram_user_id TEXT REFERENCES store_users(telegram_id);
+-- Existing Cloudflare D1: CREATE INDEX IF NOT EXISTS store_orders_telegram_user ON store_orders(telegram_user_id,created_at DESC);

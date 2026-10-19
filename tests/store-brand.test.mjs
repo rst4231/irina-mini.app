@@ -21,3 +21,13 @@ test('the retired closing banner and user-requested disclosure are absent',()=>{
   assert.doesNotMatch(html,/class="closing shell"|Нужное решение ближе|ГОТОВЫ К СТАРТУ|Только проверенные и разрешённые к перепродаже/);
   assert.doesNotMatch(locale,/Нужное решение ближе|ГОТОВЫ К СТАРТУ|The right solution/);
 });
+
+test('LH STORE has only dark theme and no theme switch',()=>{
+  const html=read('store.html');
+  const script=read('store/assets/app.js');
+  const styles=read('store/assets/style.css');
+  assert.doesNotMatch(html,/id="theme-toggle"/);
+  assert.doesNotMatch(script,/theme-toggle|setTheme|themeStorage|classList/);
+  assert.doesNotMatch(styles,/body[.]light/);
+  assert.match(styles,/color-scheme:dark/);
+});

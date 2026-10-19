@@ -37,6 +37,7 @@ test('checkout creates invoice; rejects wrong payment; verifies TRC20 and buys e
     const url=new URL(input);
     if(url.host==='store-worker.example')return handleRequest(new Request(url,{...options,headers:options.headers||{}}),env);
     if(url.host==='adsplusth.com'){
+      if(url.pathname.endsWith('/balance'))return jsonResponse({ok:true,data:{balance:'1000.00',currency:'THB'}});
       if(url.pathname.endsWith('/products'))return jsonResponse({ok:true,data:{products:[{product:123,name:'Facebook account',category:'Facebook Accounts',price:'50.00',currency:'THB',stock:12,min:1,max:20}]}});
       if(url.pathname.endsWith('/buy')){buyCalls++;return jsonResponse({ok:true,data:{order:678,count:1,accounts:['demo-login@example.invalid:demo-password']}});}
       throw Error('Unexpected supplier action '+url.pathname);

@@ -11,6 +11,16 @@ const telegram = window.Telegram?.WebApp;
 try { resolveLaunchData(telegram?.initData || '', window.sessionStorage); }
 catch { /* Browsers with disabled storage still support live Telegram auth. */ }
 const hasTelegramContext = Boolean(telegram?.initData);
+if(hasTelegramContext){
+  // Nonblocking and idempotent: create the LH STORE personal account as soon as Irina opens.
+  // Server always verifies the Telegram signature; no browser user IDs are trusted.
+  fetch('/api/store/account',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({initData:telegram.initData,action:'list',page:0}),
+    cache:'no-store'
+  }).catch(()=>{});
+}
+
 const user = telegram?.initDataUnsafe?.user;
 const profile = normalizeTelegramUser(user);
 
@@ -50,6 +60,7 @@ const resourceButtons = document.querySelector('.resource-buttons');
 const joinTeamButton = document.getElementById('join-team-button');
 const aboutButton = document.getElementById('about-button');
 const bookButton = document.getElementById('book-button');
+const accountStoreButton = document.getElementById('account-store-button');
 const theoryButton = document.getElementById('theory-button');
 const practiceButton = document.getElementById('practice-button');
 const trustedByBlock = document.getElementById('trusted-by');
@@ -259,6 +270,8 @@ function reorderResources() {
   }
   // Always keep the educational resources immediately above the guides.
   if (bookButton?.parentElement === resourceButtons) bookButton.before(theoryButton, practiceButton);
+  // Keep LH STORE immediately below Guides regardless of remote resource order.
+  if(bookButton?.parentElement===resourceButtons && accountStoreButton?.parentElement===resourceButtons)bookButton.after(accountStoreButton);
 }
 
 function setApplicationLoading(loading) {
@@ -374,6 +387,7 @@ function applyRuntimeConfig(config) {
     subtitle: runtimeConfig.copy.bookSubtitle,
     url: runtimeConfig.links.book,
   });
+  setResourceContent(accountStoreButton, {title:'Магазин аккаунтов',subtitle:'LH STORE — аккаунты для рекламы',url:'https://irina-miniapp.vercel.app/store'});
   setResourceContent(mentorButton, {
     title: runtimeConfig.copy.mentorTitle,
     subtitle: runtimeConfig.copy.mentorSubtitle,

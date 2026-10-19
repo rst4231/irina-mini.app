@@ -4,7 +4,7 @@
 const TABLES = Object.freeze({
   store_settings: ['key','value','updated_at'],
   store_products: ['id','provider','provider_listing_id','slug','title','title_ru','title_en','category','category_ru','category_en','translation_attempts','description','supplier_price_cents','stock','published','last_synced_at'],
-  store_orders: ['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','payment_tx_hash','ip_hash','status','supplier_order_id','delivery_ciphertext','error_message','pay_amount_micro','purchase_started_at','created_at','updated_at']
+  store_orders: ['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','payment_tx_hash','ip_hash','status','supplier_order_id','delivery_ciphertext','error_message','pay_amount_micro','purchase_started_at','telegram_user_id','created_at','updated_at']
 });
 const TEXT_LIMIT=256 * 1024;
 const STATUSES = new Set(['awaiting_payment','fulfilling','fulfilled','needs_review','cancelled']);
@@ -35,9 +35,9 @@ function rows(result,table){
 }
 function filters(table, params){
   const where=[];const values=[];
-  const permitted=table==='store_orders'?new Set(['id','ip_hash','created_at','status']):table==='store_products'?new Set(['id','published']):new Set();
+  const permitted=table==='store_orders'?new Set(['id','ip_hash','created_at','status','telegram_user_id']):table==='store_products'?new Set(['id','published']):new Set();
   for(const [name,filter] of params){
-    if(['select','order','limit','on_conflict'].includes(name))continue;
+    if(['select','order','limit','offset','on_conflict'].includes(name))continue;
     if(!permitted.has(name))throw Error('Invalid filter');
     const at=filter.indexOf('.');const mode=filter.slice(0,at);let val=filter.slice(at+1);
     if(at<1||!['eq','gte'].includes(mode)||(mode==='gte'&&name!=='created_at'))throw Error('Invalid filter');
@@ -59,8 +59,9 @@ async function selectRows(db,table,queryString){
     orderSql=` ORDER BY ${column} ${direction.toUpperCase()}`;
   }
   const count=params.get('limit')===null?400:Number(params.get('limit'));
-  if(!Number.isSafeInteger(count)||count<1||count>500)throw Error('Invalid limit');
-  return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ?`).bind(...values,count).all(),table);
+  const offset=params.get('offset')===null?0:Number(params.get('offset'));
+  if(!Number.isSafeInteger(count)||count<1||count>500||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid limit');
+  return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ? OFFSET ?`).bind(...values,count,offset).all(),table);
 }
 async function saveSetting(db,body){
   if(!body||!['markup_pct','checkout_enabled','supplier_resale_approved','usdt_trc20_wallet','sync_cursor','auto_fulfillment_enabled'].includes(body.key))throw Error('Invalid setting');
@@ -78,6 +79,7 @@ async function changeProduct(db,params,body){
 async function addOrder(db,body){
   const keys=['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','status','ip_hash','pay_amount_micro'];
   if(!body||!keys.every(k=>Object.hasOwn(body,k))||body.status!=='awaiting_payment'||!Number.isSafeInteger(body.product_id)||!Number.isSafeInteger(body.quantity)||body.quantity<1||body.quantity>20||!['TRC20'].includes(body.pay_network)||!Number.isSafeInteger(body.pay_amount_micro)||body.pay_amount_micro!==body.total_cents*10000+body.pay_amount_micro%10000||body.pay_amount_micro%10000===0)throw Error('Invalid order');
+  if(body.telegram_user_id!==undefined){if(!goodTelegramId(body.telegram_user_id))throw Error('Invalid Telegram user ID');keys.push('telegram_user_id');}
   await db.prepare(`INSERT INTO store_orders(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).bind(...keys.map(k=>body[k])).run();
   return [];
 }
@@ -109,6 +111,21 @@ async function beginPurchase(db,id){
     .bind(new Date().toISOString(),new Date().toISOString(),id).all();
   return [{claimed:result.results.length===1}];
 }
+
+function goodTelegramId(value){return typeof value==='string'&&/^\d{1,20}$/.test(value)&&BigInt(value)>0n;}
+async function upsertStoreUser(db,body){
+  if(!body||!goodTelegramId(body.telegram_id)||typeof body.first_name!=='string'||body.first_name.length>100||typeof body.username!=='string'||body.username.length>64)throw Error('Invalid Telegram account');
+  await db.prepare("INSERT INTO store_users(telegram_id,first_name,username) VALUES(?,?,?) ON CONFLICT(telegram_id) DO UPDATE SET first_name=excluded.first_name,username=excluded.username,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
+    .bind(body.telegram_id,body.first_name,body.username).run();
+  return [{telegram_id:body.telegram_id}];
+}
+async function claimStoreOrder(db,body){
+  if(!body||!goodTelegramId(body.telegram_id)||!(/^[0-9a-f-]{36}$/i.test(body.id||'')))throw Error('Invalid legacy order claim');
+  const found=await db.prepare('UPDATE store_orders SET telegram_user_id=? WHERE id=? AND (telegram_user_id IS NULL OR telegram_user_id=?) RETURNING id')
+   .bind(body.telegram_id,body.id,body.telegram_id).all();
+  return [{claimed:found.results.length===1}];
+}
+
 async function syncProducts(db,payload){
   if(!Array.isArray(payload)||payload.length>200)throw Error('Invalid inventory batch');
   if(!payload.length)return [];
@@ -183,7 +200,7 @@ export async function handleRequest(request,env,ctx){
   let input;
   try{const txt=await request.text();if(txt.length>TEXT_LIMIT)return problem(413,'Request too large');input=JSON.parse(txt);}catch{return problem(400,'Invalid JSON');}
   const {table,method='GET',query='',body}=input||{};
-  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase'].includes(table))return problem(400,'Invalid resource');
+  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase','rpc/store_upsert_user','rpc/store_claim_order'].includes(table))return problem(400,'Invalid resource');
   if(typeof query!=='string'||query.length>2000)return problem(400,'Invalid query');
   try{
     const params=new URLSearchParams(query);let result;
@@ -194,6 +211,8 @@ export async function handleRequest(request,env,ctx){
     else if(method==='PATCH'&&table==='store_orders')result=await transitionOrder(env.STORE_DB,params,body);
     else if(method==='POST'&&table==='rpc/store_sync_products'){result=await syncProducts(env.STORE_DB,body?.payload);if(ctx?.waitUntil)ctx.waitUntil(translatePending(env,3).catch(e=>console.error('store_translation_background_error',String(e.message).slice(0,80))));}
     else if(method==='POST'&&table==='rpc/store_begin_purchase')result=await beginPurchase(env.STORE_DB,body?.id);
+    else if(method==='POST'&&table==='rpc/store_upsert_user')result=await upsertStoreUser(env.STORE_DB,body);
+    else if(method==='POST'&&table==='rpc/store_claim_order')result=await claimStoreOrder(env.STORE_DB,body);
     else return problem(405,'Operation not allowed');
     return reply(result);
   }catch(e){
