@@ -14,6 +14,7 @@ test('contact and wallet validation',()=>{
   assert.equal(validEmail('hello@example.com'),true);
   assert.equal(validEmail('anything'),false);
   assert.equal(validWallet('TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VW'),true);
+  assert.equal(validWallet('TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VX'),false); // Invalid checksum
   assert.equal(validWallet('0x123'),false);
 });
 test('lookup token hash equality',()=>{
@@ -26,8 +27,10 @@ test('delivery encrypted at rest with authenticated decryption',()=>{
   const cipher=encryptDelivery(original);
   assert.ok(!cipher.includes('private'));
   assert.deepEqual(decryptDelivery(cipher),original);
-  const forged=cipher.replace(/.$/, c=>c==='A'?'B':'A');
-  assert.throws(()=>decryptDelivery(forged));
+  // Change a real GCM tag byte; the final base64url character may affect padding only.
+  const parts=cipher.split('.');
+  parts[1]=(parts[1][0]==='A'?'B':'A')+parts[1].slice(1);
+  assert.throws(()=>decryptDelivery(parts.join('.')));
   delete process.env.STORE_DELIVERY_ENCRYPTION_KEY;
 });
 test('supplier field mapping matches ADSPLUS v3 documentation',()=>{
