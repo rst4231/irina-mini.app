@@ -14,6 +14,15 @@
 4. Set `STORE_TRONSCAN_API_KEY` to use TRONSCAN's transaction-info API, and `STORE_PAYMENT_CONFIRMATION_MODE=tronscan`. Verify the API has access to network mainnet and stable quotas.
 5. Admin config: add YOUR valid USDT TRC20 wallet, confirm reseller permission, review only appropriate Meta inventory, enable checkout. To permit automatic buying after on-chain verification ALSO set `STORE_ALLOW_AUTOFULFILL=true` on the server, then set `auto_fulfillment_enabled` in admin. These flags intentionally default to false.
 
+## Automatic Russian and English catalog localization
+
+- D1 stores the supplier's original Thai title/category plus title_ru, title_en, category_ru and category_en.
+- Cloudflare Worker irina-store-d1 now binds Workers AI as AI and has a cron job every five minutes to translate new or modified supplier items using @cf/meta/m2m100-1.2b (THB products only; no wallet keys).
+- Existing translations are preserved when supplier stock/price changes. They are invalidated only when original title or category changes. The translator retries failed translations at most three times.
+- Manually checked initial products (16 rows) already have RU/EN labels in D1. Untranslated products remain hidden from the storefront until both languages are populated.
+- Cloudflare Workers AI inference has usage costs and quotas; monitor Cloudflare Workers AI metrics and review questionable machine translations before publishing SKUs.
+- The storefront shows Russian titles on RU and English titles on EN. Receipt titles use the language of purchase; original supplier account credentials are not altered.
+
 ## Payment flow
 - ADSPLUS charges THB. Frankfurter v2 (`/v2/rate/thb/usd`) provides daily THB/USD with a 3% FX safety buffer; quotes are USD/USDT cents. Expired or unavailable rates fail closed.
 - Each order has a unique 6-decimal USDT amount. Receipt has TXID input; backend confirms transaction hash, 20 confirmations, success, exact official USDT TRC20 contract, correct wallet and exact amount, and transfer time within 24 hours after invoice; TXID is one-use only.
