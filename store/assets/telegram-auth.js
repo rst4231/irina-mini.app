@@ -24,5 +24,20 @@
     if(!response.ok)throw Error(result.error||'Личный кабинет недоступен');
     return result;
   }
+  // Prevent accidental pinch/double-tap zoom only inside Telegram Mini App.
+  if(read()){
+    const viewport=document.querySelector('meta[name="viewport"]');
+    if(viewport)viewport.setAttribute('content','width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+    document.documentElement.classList.add('tg-store-no-zoom');
+    for(const name of ['gesturestart','gesturechange','gestureend']){
+      document.addEventListener(name,event=>event.preventDefault(),{passive:false});
+    }
+    document.addEventListener('touchmove',event=>{
+      if(event.touches?.length>1)event.preventDefault();
+    },{passive:false});
+    document.addEventListener('wheel',event=>{
+      if(event.ctrlKey)event.preventDefault();
+    },{passive:false});
+  }
   window.LHStoreAuth={read,api,available:()=>Boolean(read())};
 })();
