@@ -37,8 +37,10 @@
   },
   "copy": {
     "recruitmentBadge": "Сейчас идет набор",
-    "recruitmentTitle": "Подробнее о наборе",
+    "recruitmentTitle": "Набор в команду",
     "recruitmentSubtitle": "Научитесь лить и станьте частью сильного сообщества",
+    "storeTitle": "Магазин аккаунтов",
+    "storeSubtitle": "Аккаунты для рекламы",
     "aboutTitle": "Отзыв о работе с нами",
     "aboutSubtitle": "Реальные результаты и отзывы",
     "bookTitle": "Руководства по арбитражу трафика",

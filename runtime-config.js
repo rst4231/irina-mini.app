@@ -71,8 +71,10 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   },
   copy: {
     recruitmentBadge: 'Сейчас идет набор',
-    recruitmentTitle: 'Подробнее о наборе',
+    recruitmentTitle: 'Набор в команду',
     recruitmentSubtitle: 'Научитесь лить и станьте частью сильного сообщества',
+    storeTitle: 'Магазин аккаунтов',
+    storeSubtitle: 'Аккаунты для рекламы',
     aboutTitle: 'О команде, кейсы, отзывы',
     aboutSubtitle: 'Реальные результаты и отзывы',
     theoryTitle: 'Теория',
@@ -209,6 +211,7 @@ export function mergeRuntimeConfig(source = {}) {
   if (source.copy && typeof source.copy === 'object') {
     for (const key of [
       'recruitmentBadge', 'recruitmentTitle', 'recruitmentSubtitle',
+      'storeTitle', 'storeSubtitle',
       'aboutTitle', 'aboutSubtitle', 'bookTitle', 'bookSubtitle',
       'theoryTitle', 'theorySubtitle', 'practiceTitle', 'practiceSubtitle',
       'mentorTitle', 'mentorSubtitle', 'trustedByTitle', 'outsideTitle', 'outsideDescription',

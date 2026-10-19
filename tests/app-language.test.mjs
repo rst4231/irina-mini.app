@@ -23,3 +23,14 @@ test('homepage honors the language saved on the book page and defaults non-Engli
  assert.equal((await appLanguage('en','ru-RU')).t('Повторить'),'Retry');
  assert.equal((await appLanguage(null,'it-IT')).language,'ru');
 });
+
+test('home buttons display translated English labels for recruitment and LH STORE',async()=>{
+  const en=await appLanguage('en','ru-RU');
+  assert.equal(en.t('Набор в команду'),'Join Our Team');
+  assert.equal(en.t('Магазин аккаунтов'),'Account Store');
+  assert.equal(en.t('Аккаунты для рекламы'),'Advertising Accounts');
+  const ru=await appLanguage('ru','en-US');
+  assert.equal(ru.t('Набор в команду'),'Набор в команду');
+  assert.equal(ru.t('Магазин аккаунтов'),'Магазин аккаунтов');
+  assert.equal(ru.t('Аккаунты для рекламы'),'Аккаунты для рекламы');
+});

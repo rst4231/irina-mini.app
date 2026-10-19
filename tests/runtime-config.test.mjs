@@ -35,3 +35,13 @@ test('runtime config rejects unsafe colors and invalid versions', () => {
   assert.equal(config.version, 2);
   assert.equal(config.ui.accent, '#347ef4');
 });
+
+test('home recruitment and account store text live in runtime config', () => {
+  const current=mergeRuntimeConfig();
+  assert.equal(current.copy.recruitmentTitle,'Набор в команду');
+  assert.equal(current.copy.storeTitle,'Магазин аккаунтов');
+  assert.equal(current.copy.storeSubtitle,'Аккаунты для рекламы');
+  const changed=mergeRuntimeConfig({copy:{storeSubtitle:'Новые аккаунты',storeTitle:'Каталог'}});
+  assert.equal(changed.copy.storeSubtitle,'Новые аккаунты');
+  assert.equal(changed.copy.storeTitle,'Каталог');
+});
