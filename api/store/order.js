@@ -1,13 +1,14 @@
 import {decryptDelivery,equalsSecret,json,guardMethod,sha256} from '../../lib/store/core.js';
 import {order} from '../../lib/store/db.js';
+import {formatUsdt} from '../../lib/store/fx.js';
 export default async function handler(req,res){
   if(!guardMethod(req,res,['POST']))return;
   const {id,token}=req.body||{};
-  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/.test(id)||typeof token!=='string'||token.length<30)return json(res,400,{error:'Invalid receipt'});
+  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/i.test(id)||typeof token!=='string'||token.length<30)return json(res,400,{error:'Invalid receipt'});
   try{
-    const value=await order(id);
-    if(!value||!equalsSecret(sha256(token),value.lookup_hash))return json(res,404,{error:'Order not found'});
-    const delivered=value.status==='fulfilled'&&value.delivery_ciphertext ? decryptDelivery(value.delivery_ciphertext):null;
-    return json(res,200,{id:value.id,status:value.status,title:value.product_title,quantity:value.quantity,total:value.total_cents/100,network:value.pay_network,wallet:value.pay_wallet,createdAt:value.created_at,items:delivered});
+    const v=await order(id);
+    if(!v||!equalsSecret(sha256(token),v.lookup_hash))return json(res,404,{error:'Order not found'});
+    const items=v.status==='fulfilled'&&v.delivery_ciphertext?decryptDelivery(v.delivery_ciphertext):null;
+    return json(res,200,{id:v.id,status:v.status,title:v.product_title,quantity:v.quantity,total:v.total_cents/100,payAmount:Number.isSafeInteger(v.pay_amount_micro)?formatUsdt(v.pay_amount_micro):null,network:v.pay_network,wallet:v.pay_wallet,createdAt:v.created_at,items});
   }catch(error){console.error('Order receipt failed',error.message);return json(res,503,{error:'Order lookup unavailable'});}
 }
