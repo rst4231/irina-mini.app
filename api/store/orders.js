@@ -1,7 +1,7 @@
 import {randomInt,randomUUID} from 'node:crypto';
 import {db,hasDb,product,settings} from '../../lib/store/db.js';
 import {currency,json,guardMethod,newLookupToken,sha256,validEmail,storeCanCheckout} from '../../lib/store/core.js';
-import {hasSupplier,readListing} from '../../lib/store/supplier.js';
+import {hasSupplier,readListing,supplier} from '../../lib/store/supplier.js';
 import {quoteUsdCents,thbUsdRate,invoiceUnits,formatUsdt} from '../../lib/store/fx.js';
 import {telegramUserFromInitData} from '../../lib/store/telegram.js';
 export default async function handler(req,res){
@@ -20,6 +20,12 @@ export default async function handler(req,res){
     if(!record||record.provider!=='adsplus'||!record.published||!record.title_ru||!record.title_en||record.stock<quantity)return json(res,404,{error:'Product unavailable'});
     const latest=await readListing(record.provider_listing_id);
     if(latest.provider_listing_id!==record.provider_listing_id||latest.stock<quantity||quantity<latest.min_quantity||quantity>latest.max_quantity)return json(res,409,{error:'Supplier inventory changed'});
+    // Fail closed before collecting buyer funds when the supplier account cannot cover this order.
+    // ADSPLUS debits the separate THB wallet on purchase; buyers send USDT to the seller.
+    const funds=await supplier('balance');
+    const available=Number(funds?.balance);
+    if(funds?.currency!=='THB'||!Number.isFinite(available)||available<0)return json(res,503,{error:'Не удалось проверить баланс поставщика. Повторите попытку позже.'});
+    if(Math.round(available*100)<latest.supplier_price_cents*quantity)return json(res,409,{error:'Товар временно недоступен для автоматической выдачи. Баланс поставщика пополняется.'});
     const rate=await thbUsdRate();
     const unit=quoteUsdCents(latest.supplier_price_cents,Number(config.markup_pct??45),rate);
     const id=randomUUID(),token=newLookupToken();
