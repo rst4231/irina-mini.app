@@ -50,6 +50,7 @@ const resourceButtons = document.querySelector('.resource-buttons');
 const joinTeamButton = document.getElementById('join-team-button');
 const aboutButton = document.getElementById('about-button');
 const bookButton = document.getElementById('book-button');
+const accountStoreButton = document.getElementById('account-store-button');
 const theoryButton = document.getElementById('theory-button');
 const practiceButton = document.getElementById('practice-button');
 const trustedByBlock = document.getElementById('trusted-by');
@@ -259,6 +260,8 @@ function reorderResources() {
   }
   // Always keep the educational resources immediately above the guides.
   if (bookButton?.parentElement === resourceButtons) bookButton.before(theoryButton, practiceButton);
+  // Keep LH STORE immediately below Guides regardless of remote resource order.
+  if(bookButton?.parentElement===resourceButtons && accountStoreButton?.parentElement===resourceButtons)bookButton.after(accountStoreButton);
 }
 
 function setApplicationLoading(loading) {
@@ -374,6 +377,7 @@ function applyRuntimeConfig(config) {
     subtitle: runtimeConfig.copy.bookSubtitle,
     url: runtimeConfig.links.book,
   });
+  setResourceContent(accountStoreButton, {title:'Магазин аккаунтов',subtitle:'LH STORE — аккаунты для рекламы',url:'https://irina-miniapp.vercel.app/store'});
   setResourceContent(mentorButton, {
     title: runtimeConfig.copy.mentorTitle,
     subtitle: runtimeConfig.copy.mentorSubtitle,
