@@ -387,7 +387,7 @@ function applyRuntimeConfig(config) {
     subtitle: runtimeConfig.copy.bookSubtitle,
     url: runtimeConfig.links.book,
   });
-  setResourceContent(accountStoreButton, {title:'Магазин аккаунтов',subtitle:'LH STORE — аккаунты для рекламы',url:'https://irina-miniapp.vercel.app/store'});
+  setResourceContent(accountStoreButton, {title:runtimeConfig.copy.storeTitle,subtitle:runtimeConfig.copy.storeSubtitle,url:'https://irina-miniapp.vercel.app/store'});
   setResourceContent(mentorButton, {
     title: runtimeConfig.copy.mentorTitle,
     subtitle: runtimeConfig.copy.mentorSubtitle,
