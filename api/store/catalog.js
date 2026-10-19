@@ -14,7 +14,7 @@ export default async function handler(req,res){
     const rate=await thbUsdRate();
     const markup=Number(config.markup_pct??45);
     const checkout=storeCanCheckout(config,hasSupplier());
-    const products=catalog.map(p=>({id:p.id,title:p.title_ru,titleEn:p.title_en,category:p.category_ru,categoryEn:p.category_en,description:p.description,stock:p.stock,price:currency(quoteUsdCents(p.supplier_price_cents,markup,rate)),demo:false,tags:[p.category]}));
+    const products=catalog.map(p=>({id:p.id,title:p.title_ru,titleEn:p.title_en,category:p.category_ru,categoryEn:p.category_en,description:`Meta · ${p.category_ru} · до ${(p.description.match(/\b(\d+) max/)||[])[1]||20} шт.`,descriptionEn:`Meta · ${p.category_en} · max ${(p.description.match(/\b(\d+) max/)||[])[1]||20}`,stock:p.stock,price:currency(quoteUsdCents(p.supplier_price_cents,markup,rate)),demo:false,tags:[p.category]}));
     return json(res,200,{demo:false,checkout,products,reason:checkout?'':'Checkout is not activated'});
   }catch(error){console.error('Store catalog failed',error.message);return json(res,503,{error:'Каталог временно недоступен / Catalog unavailable'});}
 }
