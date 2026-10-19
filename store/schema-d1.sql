@@ -11,7 +11,12 @@ CREATE TABLE IF NOT EXISTS store_products (
  provider_listing_id INTEGER NOT NULL,
  slug TEXT NOT NULL,
  title TEXT NOT NULL,
+ title_ru TEXT,
+ title_en TEXT,
  category TEXT NOT NULL DEFAULT 'Facebook',
+ category_ru TEXT,
+ category_en TEXT,
+ translation_attempts INTEGER NOT NULL DEFAULT 0,
  description TEXT NOT NULL DEFAULT '',
  supplier_price_cents INTEGER NOT NULL CHECK(supplier_price_cents>=0),
  stock INTEGER NOT NULL DEFAULT 0 CHECK(stock>=0),
@@ -53,3 +58,9 @@ INSERT OR IGNORE INTO store_settings(key,value) VALUES
 -- Existing deployments: ALTER TABLE store_orders ADD COLUMN pay_amount_micro INTEGER;
 -- Existing deployments: ALTER TABLE store_orders ADD COLUMN purchase_started_at TEXT;
 -- CREATE UNIQUE INDEX IF NOT EXISTS store_orders_payment_amount_unique ON store_orders(pay_amount_micro);
+
+-- Existing D1: ALTER TABLE store_products ADD COLUMN title_ru TEXT;
+-- Existing D1: ALTER TABLE store_products ADD COLUMN title_en TEXT;
+-- Existing D1: ALTER TABLE store_products ADD COLUMN category_ru TEXT;
+-- Existing D1: ALTER TABLE store_products ADD COLUMN category_en TEXT;
+-- Existing D1: ALTER TABLE store_products ADD COLUMN translation_attempts INTEGER NOT NULL DEFAULT 0;

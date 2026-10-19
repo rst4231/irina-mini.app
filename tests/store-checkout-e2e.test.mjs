@@ -21,7 +21,7 @@ test('checkout creates invoice; rejects wrong payment; verifies TRC20 and buys e
   const database=new DatabaseSync(':memory:');database.exec('PRAGMA foreign_keys=ON');database.exec(readFileSync(new URL('../store/schema-d1.sql',import.meta.url),'utf8'));
   database.prepare("UPDATE store_settings SET value='true' WHERE key IN ('checkout_enabled','supplier_resale_approved','auto_fulfillment_enabled')").run();
   database.prepare('UPDATE store_settings SET value=? WHERE key=?').run(JSON.stringify(wallet),'usdt_trc20_wallet');
-  database.prepare("INSERT INTO store_products(provider,provider_listing_id,slug,title,category,description,supplier_price_cents,stock,published) VALUES('adsplus',123,'123','Facebook account','Facebook Accounts','Test',5000,12,1)").run();
+  database.prepare("INSERT INTO store_products(provider,provider_listing_id,slug,title,title_ru,title_en,category,category_ru,category_en,description,supplier_price_cents,stock,published) VALUES('adsplus',123,'123','Facebook account','Аккаунт Facebook','Facebook account','Facebook Accounts','Аккаунты Facebook','Facebook Accounts','Test',5000,12,1)").run();
   const D1={prepare(sql){const statement=database.prepare(sql);return {bind(...args){return {all(){return {results:statement.all(...args)}},run(){return statement.run(...args)}}}}},async batch(stmts){return stmts.map(s=>s.run())}};
   const env={STORE_DB:D1,STORE_D1_TOKEN:auth};
   process.env.STORE_D1_URL='https://store-worker.example/internal';

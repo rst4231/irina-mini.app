@@ -6,14 +6,14 @@ import {quoteUsdCents,thbUsdRate,invoiceUnits,formatUsdt} from '../../lib/store/
 export default async function handler(req,res){
   if(!guardMethod(req,res,['POST']))return;
   if(req.headers.origin){try{if(new URL(req.headers.origin).host!==req.headers.host)return json(res,403,{error:'Invalid origin'});}catch{return json(res,403,{error:'Invalid origin'});}}
-  const {productId,quantity,email,honey=''}=req.body||{};
-  if(honey||!Number.isSafeInteger(productId)||!Number.isSafeInteger(quantity)||quantity<1||quantity>20||!validEmail(email))return json(res,400,{error:'Invalid order'});
+  const {productId,quantity,email,honey='',locale='ru'}=req.body||{};
+  if(!['ru','en'].includes(locale)||honey||!Number.isSafeInteger(productId)||!Number.isSafeInteger(quantity)||quantity<1||quantity>20||!validEmail(email))return json(res,400,{error:'Invalid order'});
   if(!hasDb()||!hasSupplier())return json(res,503,{error:'Checkout is not configured'});
   try{
     const config=await settings();
     if(!storeCanCheckout(config,hasSupplier()))return json(res,503,{error:'Payments are currently disabled'});
     const record=await product(productId);
-    if(!record||record.provider!=='adsplus'||!record.published||record.stock<quantity)return json(res,404,{error:'Product unavailable'});
+    if(!record||record.provider!=='adsplus'||!record.published||!record.title_ru||!record.title_en||record.stock<quantity)return json(res,404,{error:'Product unavailable'});
     const latest=await readListing(record.provider_listing_id);
     if(latest.provider_listing_id!==record.provider_listing_id||latest.stock<quantity||quantity<latest.min_quantity||quantity>latest.max_quantity)return json(res,409,{error:'Supplier inventory changed'});
     const rate=await thbUsdRate();
@@ -24,7 +24,7 @@ export default async function handler(req,res){
     const hourAgo=new Date(Date.now()-3600000).toISOString();
     const recent=await db('store_orders',{query:`select=id&ip_hash=eq.${ipHash}&created_at=gte.${encodeURIComponent(hourAgo)}&limit=6`});
     if(recent.length>=5)return json(res,429,{error:'Too many orders'});
-    const base={id,lookup_hash:sha256(token),customer_email:email.trim().toLowerCase(),product_id:record.id,product_title:record.title,quantity,unit_price_cents:unit,supplier_unit_price_cents:latest.supplier_price_cents,total_cents:unit*quantity,pay_network:'TRC20',pay_wallet:config.usdt_trc20_wallet,status:'awaiting_payment',ip_hash:ipHash};
+    const base={id,lookup_hash:sha256(token),customer_email:email.trim().toLowerCase(),product_id:record.id,product_title:locale==='en'?record.title_en:record.title_ru,quantity,unit_price_cents:unit,supplier_unit_price_cents:latest.supplier_price_cents,total_cents:unit*quantity,pay_network:'TRC20',pay_wallet:config.usdt_trc20_wallet,status:'awaiting_payment',ip_hash:ipHash};
     let units;
     for(let attempt=0;attempt<5;attempt++){
       units=invoiceUnits(base.total_cents,randomInt(1,10000));

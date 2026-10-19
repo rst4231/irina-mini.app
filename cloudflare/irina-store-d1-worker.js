@@ -3,7 +3,7 @@
 // It deliberately exposes no raw SQL endpoint and no browser CORS permission.
 const TABLES = Object.freeze({
   store_settings: ['key','value','updated_at'],
-  store_products: ['id','provider','provider_listing_id','slug','title','category','description','supplier_price_cents','stock','published','last_synced_at'],
+  store_products: ['id','provider','provider_listing_id','slug','title','title_ru','title_en','category','category_ru','category_en','translation_attempts','description','supplier_price_cents','stock','published','last_synced_at'],
   store_orders: ['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','payment_tx_hash','ip_hash','status','supplier_order_id','delivery_ciphertext','error_message','pay_amount_micro','purchase_started_at','created_at','updated_at']
 });
 const TEXT_LIMIT=256 * 1024;
@@ -115,13 +115,67 @@ async function syncProducts(db,payload){
   const fields=['provider','provider_listing_id','slug','title','category','description','supplier_price_cents','stock'];
   const prepared=payload.map(p=>{
     if(p.provider!=='adsplus'||!allowedCategory(p.category)||!Number.isSafeInteger(p.provider_listing_id)||p.provider_listing_id<1||!Number.isSafeInteger(p.supplier_price_cents)||p.supplier_price_cents<0||!Number.isSafeInteger(p.stock)||p.stock<0||typeof p.slug!=='string'||p.slug.length>250||!p.slug||!p.title||p.title.length>150)throw Error('Invalid supplier item');
-    const sql=`INSERT INTO store_products(${fields.join(',')},last_synced_at) VALUES(${fields.map(()=>'?').join(',')},?) ON CONFLICT(provider,provider_listing_id) DO UPDATE SET slug=excluded.slug,title=excluded.title,category=excluded.category,description=excluded.description,supplier_price_cents=excluded.supplier_price_cents,stock=excluded.stock,last_synced_at=excluded.last_synced_at`;
+    const sql=`INSERT INTO store_products(${fields.join(',')},last_synced_at) VALUES(${fields.map(()=>'?').join(',')},?) ON CONFLICT(provider,provider_listing_id) DO UPDATE SET slug=excluded.slug,title=excluded.title,category=excluded.category,description=excluded.description,supplier_price_cents=excluded.supplier_price_cents,stock=excluded.stock,last_synced_at=excluded.last_synced_at,title_ru=CASE WHEN store_products.title=excluded.title AND store_products.category=excluded.category THEN store_products.title_ru ELSE NULL END,title_en=CASE WHEN store_products.title=excluded.title AND store_products.category=excluded.category THEN store_products.title_en ELSE NULL END,category_ru=CASE WHEN store_products.category=excluded.category THEN store_products.category_ru ELSE NULL END,category_en=CASE WHEN store_products.category=excluded.category THEN store_products.category_en ELSE NULL END,translation_attempts=CASE WHEN store_products.title=excluded.title AND store_products.category=excluded.category THEN store_products.translation_attempts ELSE 0 END`;
     return db.prepare(sql).bind(...fields.map(k=>p[k]),new Date().toISOString());
   });
   await db.batch(prepared);
   return [];
 }
-export async function handleRequest(request,env){
+
+// Translate only new/changed ADSPLUS listings. Source text stays unchanged.
+// The localizations are cached in D1; unlocalized products stay unpublished.
+const THAI=/[\u0E00-\u0E7F]/;
+const CATEGORY_TRANSLATIONS={
+  'Facebook Clone (ใหม่/เก่า)':{ru:'Facebook — клоны (новые/старые)',en:'Facebook clone accounts (new/aged)'},
+  'Facebook UID 1000x (เก่า)':{ru:'Facebook — старые аккаунты UID 1000x',en:'Facebook aged UID 1000x accounts'},
+  'Facebook Clone ชื่อไทย':{ru:'Facebook — клоны с тайским именем',en:'Facebook clone accounts with Thai names'}
+};
+export function normalizedTranslation(original,translated){
+  if(typeof translated!=='string'||!translated.trim()||THAI.test(translated))return null;
+  let text=translated.replace(/\s*;\s*/g,' | ').replace(/Фейсбук/gi,'Facebook').replace(/\s+/g,' ').trim();
+  for(const match of original.match(/\b(?:UID\s*\d+|FVIAINBOXES\.COM|HOTMAIL|2FA)\b/gi)||[]){
+    if(!text.toLowerCase().includes(match.toLowerCase()))text+=' | '+match;
+  }
+  return text.length>350?text.slice(0,350):text;
+}
+async function translateValue(env,original,target,kind){
+  if(kind==='category'&&CATEGORY_TRANSLATIONS[original]?.[target])return CATEGORY_TRANSLATIONS[original][target];
+  const source=THAI.test(original)?'th':/[А-Яа-яЁё]/.test(original)?'ru':'en';
+  if(source===target||!/[\p{L}]/u.test(original))return original;
+  const response=await env.AI.run('@cf/meta/m2m100-1.2b',{
+    text:original.replace(/\s*\|\s*/g,'; '),source_lang:source,target_lang:target
+  });
+  return normalizedTranslation(original,response?.translated_text);
+}
+async function translatePending(env,limit=8){
+  if(!env.STORE_DB||!env.AI)return 0;
+  const record=await env.STORE_DB.prepare(
+    'SELECT id,title,category,title_ru,title_en,category_ru,category_en FROM store_products WHERE translation_attempts<3 AND (title_ru IS NULL OR title_en IS NULL OR category_ru IS NULL OR category_en IS NULL) ORDER BY id LIMIT ?'
+  ).bind(limit).all();
+  let completed=0;
+  for(const p of record.results){
+    try{
+      const [ru,en,catRu,catEn]=await Promise.all([
+        p.title_ru||translateValue(env,p.title,'ru','title'),
+        p.title_en||translateValue(env,p.title,'en','title'),
+        p.category_ru||translateValue(env,p.category,'ru','category'),
+        p.category_en||translateValue(env,p.category,'en','category')
+      ]);
+      if(!ru||!en||!catRu||!catEn)throw Error('Translation incomplete');
+      const updated=await env.STORE_DB.prepare(
+        'UPDATE store_products SET title_ru=?,title_en=?,category_ru=?,category_en=?,translation_attempts=0 WHERE id=? AND title=? AND category=?'
+      ).bind(ru,en,catRu,catEn,p.id,p.title,p.category).run();
+      if(updated.meta?.changes)completed++;
+    }catch(error){
+      await env.STORE_DB.prepare('UPDATE store_products SET translation_attempts=translation_attempts+1 WHERE id=? AND title=? AND category=?')
+        .bind(p.id,p.title,p.category).run();
+      console.error('store_translation_failed',p.id,String(error.message||error).slice(0,100));
+    }
+  }
+  return completed;
+}
+
+export async function handleRequest(request,env,ctx){
   if(new URL(request.url).pathname!=='/internal'||request.method!=='POST')return problem(404,'Not found');
   if(!authorized(request,env.STORE_D1_TOKEN))return problem(401,'Unauthorized');
   if(!env.STORE_DB)return problem(503,'Database unavailable');
@@ -138,7 +192,7 @@ export async function handleRequest(request,env){
     else if(method==='PATCH'&&table==='store_products')result=await changeProduct(env.STORE_DB,params,body);
     else if(method==='POST'&&table==='store_orders')result=await addOrder(env.STORE_DB,body);
     else if(method==='PATCH'&&table==='store_orders')result=await transitionOrder(env.STORE_DB,params,body);
-    else if(method==='POST'&&table==='rpc/store_sync_products')result=await syncProducts(env.STORE_DB,body?.payload);
+    else if(method==='POST'&&table==='rpc/store_sync_products'){result=await syncProducts(env.STORE_DB,body?.payload);if(ctx?.waitUntil)ctx.waitUntil(translatePending(env,3).catch(e=>console.error('store_translation_background_error',String(e.message).slice(0,80))));}
     else if(method==='POST'&&table==='rpc/store_begin_purchase')result=await beginPurchase(env.STORE_DB,body?.id);
     else return problem(405,'Operation not allowed');
     return reply(result);
@@ -149,4 +203,4 @@ export async function handleRequest(request,env){
     return problem(503,'Database operation failed');
   }
 }
-export default {fetch:handleRequest};
+export default {fetch:handleRequest,async scheduled(_event,env,ctx){ctx.waitUntil(translatePending(env,12).catch(e=>console.error('store_translation_cron_error',String(e.message).slice(0,80))));}};
