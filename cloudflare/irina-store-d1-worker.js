@@ -37,7 +37,7 @@ function filters(table, params){
   const where=[];const values=[];
   const permitted=table==='store_orders'?new Set(['id','ip_hash','created_at','status','telegram_user_id']):table==='store_products'?new Set(['id','published']):new Set();
   for(const [name,filter] of params){
-    if(['select','order','limit','on_conflict'].includes(name))continue;
+    if(['select','order','limit','offset','on_conflict'].includes(name))continue;
     if(!permitted.has(name))throw Error('Invalid filter');
     const at=filter.indexOf('.');const mode=filter.slice(0,at);let val=filter.slice(at+1);
     if(at<1||!['eq','gte'].includes(mode)||(mode==='gte'&&name!=='created_at'))throw Error('Invalid filter');
@@ -59,8 +59,9 @@ async function selectRows(db,table,queryString){
     orderSql=` ORDER BY ${column} ${direction.toUpperCase()}`;
   }
   const count=params.get('limit')===null?400:Number(params.get('limit'));
-  if(!Number.isSafeInteger(count)||count<1||count>500)throw Error('Invalid limit');
-  return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ?`).bind(...values,count).all(),table);
+  const offset=params.get('offset')===null?0:Number(params.get('offset'));
+  if(!Number.isSafeInteger(count)||count<1||count>500||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid limit');
+  return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ? OFFSET ?`).bind(...values,count,offset).all(),table);
 }
 async function saveSetting(db,body){
   if(!body||!['markup_pct','checkout_enabled','supplier_resale_approved','usdt_trc20_wallet','sync_cursor','auto_fulfillment_enabled'].includes(body.key))throw Error('Invalid setting');
@@ -78,7 +79,7 @@ async function changeProduct(db,params,body){
 async function addOrder(db,body){
   const keys=['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','status','ip_hash','pay_amount_micro'];
   if(!body||!keys.every(k=>Object.hasOwn(body,k))||body.status!=='awaiting_payment'||!Number.isSafeInteger(body.product_id)||!Number.isSafeInteger(body.quantity)||body.quantity<1||body.quantity>20||!['TRC20'].includes(body.pay_network)||!Number.isSafeInteger(body.pay_amount_micro)||body.pay_amount_micro!==body.total_cents*10000+body.pay_amount_micro%10000||body.pay_amount_micro%10000===0)throw Error('Invalid order');
-  if(body.telegram_user_id!==undefined){if(!/^\d{1,20}$/.test(String(body.telegram_user_id)))throw Error('Invalid Telegram user ID');keys.push('telegram_user_id');}
+  if(body.telegram_user_id!==undefined){if(!goodTelegramId(body.telegram_user_id))throw Error('Invalid Telegram user ID');keys.push('telegram_user_id');}
   await db.prepare(`INSERT INTO store_orders(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).bind(...keys.map(k=>body[k])).run();
   return [];
 }
