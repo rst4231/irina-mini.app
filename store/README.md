@@ -1,4 +1,4 @@
-# ADSPLY — Meta account storefront inside Irina
+# LH STORE — Meta account storefront inside Irina
 
 ## Components
 - `/store` storefront; `/store/admin` authenticated admin; `/store/order` private receipt.
