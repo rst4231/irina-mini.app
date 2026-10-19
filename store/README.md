@@ -25,7 +25,7 @@
 
 ## Payment flow
 - ADSPLUS charges THB. Frankfurter v2 (`/v2/rate/thb/usd`) provides daily THB/USD with a 3% FX safety buffer; quotes are USD/USDT cents. Expired or unavailable rates fail closed.
-- Each order has a unique 6-decimal USDT amount. Receipt has TXID input; backend confirms transaction hash, 20 confirmations, success, exact official USDT TRC20 contract, correct wallet and exact amount, and transfer time within 24 hours after invoice; TXID is one-use only.
+- Each order has a unique 6-decimal USDT amount. Receipt has TXID input; backend confirms transaction hash, 20 confirmations, success, exact official USDT TRC20 contract, correct wallet and exact amount, and transfer time within 50 minutes after invoice; TXID is one-use only.
 - The customer invokes verification by providing TXID. This is NOT autonomous address monitoring. To implement polling/on-chain webhook later, add a verified provider integration and clear retry semantics.
 - Only after verified payment is the order marked `fulfilling` atomically in D1. If enabled, backend attempts buying from ADSPLUS once. Supplier has no documented idempotency key for account purchases; durable `purchase_started_at` prevents a retry. Ambiguous vendor outcomes require manual reconciliation via ADSPLUS order history before manual delivery/refund.
 - Seller balance at ADSPLUS must be funded separately from buyer USDT payments; no direct card processing or crypto custody is implemented.
@@ -37,3 +37,5 @@
 ## Security
 - Never use private wallet keys in this app. No signing of chain transactions. Each receipt URL contains a private random lookup token. Use a fresh ADSPLUS API key after rotating any key previously shared in chat.
 - Keep checkout and auto-fulfilment disabled until realistic end-to-end payment tests, concurrency tests, stock checks, legal terms and refunds/reconciliation are verified.
+
+- Payment window: 50 minutes from order creation. The private Worker cron runs every minute to cancel unverified unpaid orders; reads also expire overdue orders immediately. Translation work remains on five-minute boundaries. A transfer sent before expiry can still be verified by TXID later; manually cancelled orders remain terminal. The receipt timer uses the server deadline and supports owner-authorized cancellation.

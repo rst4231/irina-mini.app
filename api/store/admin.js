@@ -5,6 +5,7 @@ import {fulfill} from '../../lib/store/fulfill.js';
 import {getMetaCategories,hasSupplier,syncBatch} from '../../lib/store/supplier.js';
 import {verifyTronPayment} from '../../lib/store/tron.js';
 import {currentProfitMonth,profitReport,validProfitMonth} from '../../lib/store/profit.js';
+import {claimVerifiedPayment,paymentTimedOut} from '../../lib/store/payment-window.js';
 
 export default async function handler(req,res){
   if(!guardMethod(req,res,['GET','POST']))return;
@@ -66,10 +67,10 @@ export default async function handler(req,res){
       const id=String(req.body.id||''),tx=String(req.body.tx_hash||'').trim().toLowerCase();
       if(!/^[0-9a-f-]{36}$/i.test(id)||!/^[a-f0-9]{64}$/.test(tx))return json(res,400,{error:'Invalid order/payment'});
       const record=await order(id);
-      if(!record||record.status!=='awaiting_payment'||!Number.isSafeInteger(record.pay_amount_micro))return json(res,409,{error:'Invalid order status'});
+      if(!record||(record.status!=='awaiting_payment'&&!paymentTimedOut(record))||!Number.isSafeInteger(record.pay_amount_micro))return json(res,409,{error:'Invalid order status'});
       const paid=await verifyTronPayment({txid:tx,wallet:record.pay_wallet,units:record.pay_amount_micro,createdAt:record.created_at});
       if(!paid)return json(res,422,{error:'Транзакция не подтверждена или не совпадают реквизиты'});
-      const claimed=await transition(id,'awaiting_payment','fulfilling',{payment_tx_hash:tx});
+      const claimed=await claimVerifiedPayment(record,tx);
       if(!claimed)return json(res,409,{error:'TXID already used or order already processing'});
       const cfg=await settings();
       if(cfg.auto_fulfillment_enabled!==true||process.env.STORE_ALLOW_AUTOFULFILL!=='true')return json(res,200,{status:'fulfilling',message:'Payment verified; awaits manual fulfillment'});

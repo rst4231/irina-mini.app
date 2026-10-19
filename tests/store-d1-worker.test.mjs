@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
-import {handleRequest} from '../cloudflare/irina-store-d1-worker.js';
+import worker,{handleRequest} from '../cloudflare/irina-store-d1-worker.js';
 
 const SECRET='the-internal-store-worker-token-is-long-enough';
 const UUID='ba3e4b7d-9b7a-4c76-8fae-a9864237e011';
@@ -38,6 +38,24 @@ test('admin order list joins the correct Telegram name and username without expo
   env.db.close();
 });
 function orderBody(id){return {id,lookup_hash:'hash'+id,customer_email:'test@example.com',product_id:1,product_title:'Facebook personal account',quantity:1,unit_price_cents:900,supplier_unit_price_cents:600,total_cents:900,pay_network:'TRC20',pay_wallet:'TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VW',status:'awaiting_payment',ip_hash:'abc',pay_amount_micro:9000001};}
+test('unpaid orders expire after 50 minutes; paid orders stay safe and only timeouts can recover',async()=>{
+  const env=makeEnv();await rpc(env,'rpc/store_sync_products','POST','',{payload:[listing]});
+  const paid='ca3e4b7d-9b7a-4c76-8fae-a9864237e011',manual='da3e4b7d-9b7a-4c76-8fae-a9864237e011';
+  for(const [i,id] of [UUID,paid,manual].entries())await rpc(env,'store_orders','POST','',{...orderBody(id),pay_amount_micro:9000001+i});
+  await rpc(env,'store_orders','PATCH',`id=eq.${paid}&status=eq.awaiting_payment`,{status:'fulfilling',payment_tx_hash:'a'.repeat(64)});
+  await rpc(env,'store_orders','PATCH',`id=eq.${manual}&status=eq.awaiting_payment`,{status:'cancelled'});
+  env.db.prepare('UPDATE store_orders SET created_at=?').run(new Date(Date.now()-50*60000-1000).toISOString());
+  const pending=[];await worker.scheduled({scheduledTime:Date.now()},env,{waitUntil(p){pending.push(p)}});await Promise.all(pending);
+  const rows=(await rpc(env,'store_orders')).body;
+  assert.equal(rows.find(x=>x.id===UUID).status,'cancelled');
+  assert.equal(rows.find(x=>x.id===UUID).error_message,'payment_timeout');
+  assert.equal(rows.find(x=>x.id===paid).status,'fulfilling');
+  assert.equal((await rpc(env,'store_orders','PATCH',`id=eq.${paid}&status=eq.awaiting_payment`,{status:'cancelled'})).body.length,0);
+  const recovered=await rpc(env,'store_orders','PATCH',`id=eq.${UUID}&status=eq.cancelled`,{status:'fulfilling',payment_tx_hash:'b'.repeat(64)});
+  assert.equal(recovered.body[0].status,'fulfilling');assert.equal(recovered.body[0].error_message,null);
+  assert.equal((await rpc(env,'store_orders','PATCH',`id=eq.${manual}&status=eq.cancelled`,{status:'fulfilling',payment_tx_hash:'c'.repeat(64)})).body.length,0);
+  env.db.close();
+});
 test('private worker rejects unauthenticated, public GET and arbitrary SQL',async()=>{
   const env=makeEnv();
   assert.equal((await rpc(env,'store_settings','GET','',{},'invalid')).status,401);

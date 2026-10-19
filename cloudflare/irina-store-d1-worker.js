@@ -7,6 +7,12 @@ const TABLES = Object.freeze({
   store_orders: ['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','payment_tx_hash','ip_hash','status','supplier_order_id','delivery_ciphertext','error_message','pay_amount_micro','purchase_started_at','telegram_user_id','created_at','updated_at']
 });
 const TEXT_LIMIT=256 * 1024;
+const PAYMENT_WINDOW_MS=50*60*1000;
+async function expireUnpaidOrders(db){
+  const now=new Date();
+  await db.prepare("UPDATE store_orders SET status='cancelled',error_message='payment_timeout',updated_at=? WHERE status='awaiting_payment' AND payment_tx_hash IS NULL AND created_at<=?")
+    .bind(now.toISOString(),new Date(now.getTime()-PAYMENT_WINDOW_MS).toISOString()).run();
+}
 const STATUSES = new Set(['awaiting_payment','fulfilling','fulfilled','needs_review','cancelled']);
 const META_ACCOUNT_CATEGORY=/(?:\bfacebook\b|\binstagram\b|\bmeta\b|\bthreads\b|\bwhatsapp\b|\bbusiness manager\b|\bfb accounts?\b)/i;
 const NON_ACCOUNT_CATEGORY=/(?:\b(?:likes?|followers?|views?|comments?|boosts?|reactions?|engagement|services?)\b)/i;
@@ -49,6 +55,7 @@ function filters(table, params){
   return {sql:where.length?' WHERE '+where.join(' AND '):'',values};
 }
 async function selectRows(db,table,queryString){
+  if(table==='store_orders')await expireUnpaidOrders(db);
   const params=new URLSearchParams(queryString);
   const cols=safeSelect(table,params.get('select'));
   const {sql,values}=filters(table,params);
@@ -65,6 +72,7 @@ async function selectRows(db,table,queryString){
 }
 async function adminOrders(db,query){
   if(query)throw Error('Invalid admin order query');
+  await expireUnpaidOrders(db);
   // Fixed projection: never expose receipt tokens or encrypted credentials.
   const result=await db.prepare(`SELECT o.id,o.product_title,o.customer_email,o.quantity,o.total_cents,o.pay_amount_micro,o.status,o.created_at,o.purchase_started_at,o.supplier_order_id,o.error_message,o.payment_tx_hash,o.telegram_user_id,u.first_name AS telegram_first_name,u.username AS telegram_username
     FROM store_orders o LEFT JOIN store_users u ON u.telegram_id=o.telegram_user_id ORDER BY o.created_at DESC,o.id DESC LIMIT 100`).bind().all();
@@ -94,22 +102,25 @@ async function transitionOrder(db,params,body){
   const id=params.get('id'),from=params.get('status');
   if(!/^eq\.[0-9a-f-]{36}$/i.test(id||'')||!/^eq\.[a-z_]+$/.test(from||'')||!STATUSES.has(body?.status))throw Error('Invalid order transition');
   const before=from.slice(3),to=body.status;
-  const allowed={awaiting_payment:['fulfilling','cancelled'],needs_review:['fulfilling'],fulfilling:['fulfilled','needs_review']};
+  const allowed={awaiting_payment:['fulfilling','cancelled'],cancelled:['fulfilling'],needs_review:['fulfilling'],fulfilling:['fulfilled','needs_review']};
   if(!allowed[before]?.includes(to))throw Error('Invalid status change');
   const extra=Object.entries(body).filter(([k])=>k!=='status');
   const permitted={
     'awaiting_payment:fulfilling':['payment_tx_hash'],
     'awaiting_payment:cancelled':[],
+    'cancelled:fulfilling':['payment_tx_hash'],
     'needs_review:fulfilling':[],
     'fulfilling:fulfilled':['supplier_order_id','delivery_ciphertext','error_message'],
     'fulfilling:needs_review':['error_message']
   }[`${before}:${to}`];
   if(extra.some(([k])=>!permitted.includes(k)))throw Error('Invalid status data');
-  if(before==='awaiting_payment'&&to==='fulfilling'&&!/^[a-f0-9]{64}$/.test(body.payment_tx_hash||''))throw Error('Invalid transaction hash');
+  if(['awaiting_payment','cancelled'].includes(before)&&to==='fulfilling'&&!/^[a-f0-9]{64}$/.test(body.payment_tx_hash||''))throw Error('Invalid transaction hash');
   if(to==='fulfilled'&&(!body.delivery_ciphertext||!body.supplier_order_id))throw Error('Missing delivery');
   const columns=['status','updated_at',...extra.map(([k])=>k)];
   const values=[to,new Date().toISOString(),...extra.map(([,v])=>v)];
-  const stmt=`UPDATE store_orders SET ${columns.map(k=>`${k}=?`).join(',')} WHERE id=? AND status=? RETURNING *`;
+  if(before==='cancelled'){columns.push('error_message');values.push(null);}
+  const condition=before==='cancelled'?" AND error_message='payment_timeout'":to==='cancelled'?' AND payment_tx_hash IS NULL':'';
+  const stmt=`UPDATE store_orders SET ${columns.map(k=>`${k}=?`).join(',')} WHERE id=? AND status=?${condition} RETURNING *`;
   return rows(await db.prepare(stmt).bind(...values,id.slice(3),before).all(),'store_orders');
 }
 async function beginPurchase(db,id){
@@ -230,4 +241,8 @@ export async function handleRequest(request,env,ctx){
     return problem(503,'Database operation failed');
   }
 }
-export default {fetch:handleRequest,async scheduled(_event,env,ctx){ctx.waitUntil(translatePending(env,12).catch(e=>console.error('store_translation_cron_error',String(e.message).slice(0,80))));}};
+export default {fetch:handleRequest,async scheduled(event,env,ctx){
+  ctx.waitUntil(expireUnpaidOrders(env.STORE_DB));
+  // The trigger runs every minute for order expiry; retain five-minute AI work.
+  if(Math.floor((event?.scheduledTime??Date.now())/60000)%5===0)ctx.waitUntil(translatePending(env,12).catch(e=>console.error('store_translation_cron_error',String(e.message).slice(0,80))));
+}};
