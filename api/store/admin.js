@@ -4,6 +4,7 @@ import {quoteUsdCents,formatUsdt,thbUsdRate} from '../../lib/store/fx.js';
 import {fulfill} from '../../lib/store/fulfill.js';
 import {getMetaCategories,hasSupplier,syncBatch,supplier} from '../../lib/store/supplier.js';
 import {verifyTronPayment} from '../../lib/store/tron.js';
+import {currentProfitMonth,profitReport,validProfitMonth} from '../../lib/store/profit.js';
 
 export default async function handler(req,res){
   if(!guardMethod(req,res,['GET','POST']))return;
@@ -11,10 +12,15 @@ export default async function handler(req,res){
   if(!hasDb())return json(res,503,{error:'Cloudflare D1 is not configured'});
   try{
     if(req.method==='GET'){
+      if(req.query?.report==='profit'){
+        const month=req.query.month??currentProfitMonth();
+        if(!validProfitMonth(month))return json(res,400,{error:'Выберите месяц в формате ГГГГ-ММ или all'});
+        return json(res,200,{profit:await profitReport(month)});
+      }
       const cfg=await settings();
       const [products,orders]=await Promise.all([
         db('store_products',{query:'select=id,provider,title,category,title_ru,title_en,category_ru,category_en,description,stock,supplier_price_cents,published,last_synced_at&order=last_synced_at.desc&limit=400'}),
-        db('store_orders',{query:'select=id,product_title,customer_email,quantity,total_cents,pay_amount_micro,status,created_at,purchase_started_at,supplier_order_id,error_message,payment_tx_hash&order=created_at.desc&limit=100'})
+        db('rpc/store_admin_orders')
       ]);
       let rate=null;
       try{rate=await thbUsdRate();}catch(error){console.error('FX rate unavailable',error.message);}

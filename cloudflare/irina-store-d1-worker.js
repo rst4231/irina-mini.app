@@ -63,6 +63,13 @@ async function selectRows(db,table,queryString){
   if(!Number.isSafeInteger(count)||count<1||count>500||!Number.isSafeInteger(offset)||offset<0||offset>100000)throw Error('Invalid limit');
   return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ? OFFSET ?`).bind(...values,count,offset).all(),table);
 }
+async function adminOrders(db,query){
+  if(query)throw Error('Invalid admin order query');
+  // Fixed projection: never expose receipt tokens or encrypted credentials.
+  const result=await db.prepare(`SELECT o.id,o.product_title,o.customer_email,o.quantity,o.total_cents,o.pay_amount_micro,o.status,o.created_at,o.purchase_started_at,o.supplier_order_id,o.error_message,o.payment_tx_hash,o.telegram_user_id,u.first_name AS telegram_first_name,u.username AS telegram_username
+    FROM store_orders o LEFT JOIN store_users u ON u.telegram_id=o.telegram_user_id ORDER BY o.created_at DESC,o.id DESC LIMIT 100`).bind().all();
+  return result.results;
+}
 async function saveSetting(db,body){
   if(!body||!['markup_pct','checkout_enabled','supplier_resale_approved','usdt_trc20_wallet','sync_cursor','auto_fulfillment_enabled'].includes(body.key))throw Error('Invalid setting');
   await db.prepare("INSERT INTO store_settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at")
@@ -200,11 +207,12 @@ export async function handleRequest(request,env,ctx){
   let input;
   try{const txt=await request.text();if(txt.length>TEXT_LIMIT)return problem(413,'Request too large');input=JSON.parse(txt);}catch{return problem(400,'Invalid JSON');}
   const {table,method='GET',query='',body}=input||{};
-  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase','rpc/store_upsert_user','rpc/store_claim_order'].includes(table))return problem(400,'Invalid resource');
+  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase','rpc/store_upsert_user','rpc/store_claim_order','rpc/store_admin_orders'].includes(table))return problem(400,'Invalid resource');
   if(typeof query!=='string'||query.length>2000)return problem(400,'Invalid query');
   try{
     const params=new URLSearchParams(query);let result;
     if(method==='GET'&&TABLES[table])result=await selectRows(env.STORE_DB,table,query);
+    else if(method==='GET'&&table==='rpc/store_admin_orders')result=await adminOrders(env.STORE_DB,query);
     else if(method==='POST'&&table==='store_settings')result=await saveSetting(env.STORE_DB,body);
     else if(method==='PATCH'&&table==='store_products')result=await changeProduct(env.STORE_DB,params,body);
     else if(method==='POST'&&table==='store_orders')result=await addOrder(env.STORE_DB,body);

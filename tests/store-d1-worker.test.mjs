@@ -19,6 +19,24 @@ async function rpc(env,table,method='GET',query='',body={},authorization=SECRET)
   const res=await handleRequest(req,env);return {status:res.status,body:await res.json()};
 }
 const listing={provider:'adsplus',provider_listing_id:123,slug:'safe',title:'Facebook personal account',category:'Facebook Accounts',description:'Test inventory only',supplier_price_cents:600,stock:3};
+test('admin order list joins the correct Telegram name and username without exposing delivery secrets',async()=>{
+  const env=makeEnv();await rpc(env,'rpc/store_sync_products','POST','',{payload:[listing]});
+  await rpc(env,'rpc/store_upsert_user','POST','',{telegram_id:'12345',first_name:'Рустам',username:'test_user'});
+  await rpc(env,'rpc/store_upsert_user','POST','',{telegram_id:'67890',first_name:'Другой',username:'other_user'});
+  await rpc(env,'store_orders','POST','',{...orderBody(UUID),telegram_user_id:'12345'});
+  const legacy='ca3e4b7d-9b7a-4c76-8fae-a9864237e011';
+  await rpc(env,'store_orders','POST','',{...orderBody(legacy),pay_amount_micro:9000002});
+  const result=await rpc(env,'rpc/store_admin_orders');
+  assert.equal(result.status,200);
+  assert.equal(result.body.length,2);
+  const linked=result.body.find(x=>x.id===UUID),unlinked=result.body.find(x=>x.id===legacy);
+  assert.equal(linked.telegram_first_name,'Рустам');assert.equal(linked.telegram_username,'test_user');
+  assert.equal(unlinked.telegram_first_name,null);assert.equal(unlinked.telegram_username,null);
+  for(const row of result.body){assert.equal(Object.hasOwn(row,'delivery_ciphertext'),false);assert.equal(Object.hasOwn(row,'lookup_hash'),false);}
+  assert.equal((await rpc(env,'rpc/store_admin_orders','GET','',{},'invalid')).status,401);
+  assert.equal((await rpc(env,'rpc/store_admin_orders','GET','select=delivery_ciphertext')).status,400);
+  env.db.close();
+});
 function orderBody(id){return {id,lookup_hash:'hash'+id,customer_email:'test@example.com',product_id:1,product_title:'Facebook personal account',quantity:1,unit_price_cents:900,supplier_unit_price_cents:600,total_cents:900,pay_network:'TRC20',pay_wallet:'TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VW',status:'awaiting_payment',ip_hash:'abc',pay_amount_micro:9000001};}
 test('private worker rejects unauthenticated, public GET and arbitrary SQL',async()=>{
   const env=makeEnv();
