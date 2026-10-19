@@ -2,7 +2,7 @@ import {db,hasDb,order,settings,setSetting,transition} from '../../lib/store/db.
 import {basicAuth,currency,guardMethod,json,storeCanCheckout,validWallet} from '../../lib/store/core.js';
 import {quoteUsdCents,formatUsdt,thbUsdRate} from '../../lib/store/fx.js';
 import {fulfill} from '../../lib/store/fulfill.js';
-import {getMetaCategories,hasSupplier,syncBatch} from '../../lib/store/supplier.js';
+import {getMetaCategories,hasSupplier,syncBatch,supplier} from '../../lib/store/supplier.js';
 import {verifyTronPayment} from '../../lib/store/tron.js';
 
 export default async function handler(req,res){
@@ -18,8 +18,13 @@ export default async function handler(req,res){
       ]);
       let rate=null;
       try{rate=await thbUsdRate();}catch(error){console.error('FX rate unavailable',error.message);}
+      let supplierBalance=null;
+      if(hasSupplier()){
+        try{const value=await supplier('balance');if(value?.currency==='THB'&&Number.isFinite(Number(value.balance)))supplierBalance=Number(value.balance);}
+        catch(e){console.error('ADSPLUS balance unavailable',String(e.message).slice(0,80));}
+      }
       const markup=Number(cfg.markup_pct??45);
-      return json(res,200,{config:{markup_pct:markup,checkout_enabled:cfg.checkout_enabled??false,auto_fulfillment_enabled:cfg.auto_fulfillment_enabled??false,supplier_resale_approved:cfg.supplier_resale_approved??false,usdt_trc20_wallet:cfg.usdt_trc20_wallet??'',sync_cursor:cfg.sync_cursor??null,supplier_connected:hasSupplier(),fx_connected:rate!==null,blockchain_connected:!!process.env.STORE_TRONSCAN_API_KEY},products:products.map(p=>({...p,price:rate!==null?currency(quoteUsdCents(p.supplier_price_cents,markup,rate)):null})),orders:orders.map(x=>({...x,total:currency(x.total_cents),payAmount:Number.isSafeInteger(x.pay_amount_micro)?formatUsdt(x.pay_amount_micro):null}))});
+      return json(res,200,{config:{markup_pct:markup,checkout_enabled:cfg.checkout_enabled??false,auto_fulfillment_enabled:cfg.auto_fulfillment_enabled??false,supplier_resale_approved:cfg.supplier_resale_approved??false,usdt_trc20_wallet:cfg.usdt_trc20_wallet??'',sync_cursor:cfg.sync_cursor??null,supplier_connected:hasSupplier(),supplier_balance_thb:supplierBalance,fx_connected:rate!==null,blockchain_connected:!!process.env.STORE_TRONSCAN_API_KEY},products:products.map(p=>({...p,price:rate!==null?currency(quoteUsdCents(p.supplier_price_cents,markup,rate)):null})),orders:orders.map(x=>({...x,total:currency(x.total_cents),payAmount:Number.isSafeInteger(x.pay_amount_micro)?formatUsdt(x.pay_amount_micro):null}))});
     }
     const {action}=req.body||{};
     if(action==='settings'){
