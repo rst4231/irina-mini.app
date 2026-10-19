@@ -13,7 +13,7 @@ export default async function handler(req,res){
     if(req.method==='GET'){
       const cfg=await settings();
       const [products,orders]=await Promise.all([
-        db('store_products',{query:'select=id,provider,title,category,description,stock,supplier_price_cents,published,last_synced_at&order=last_synced_at.desc&limit=400'}),
+        db('store_products',{query:'select=id,provider,title,category,title_ru,title_en,category_ru,category_en,description,stock,supplier_price_cents,published,last_synced_at&order=last_synced_at.desc&limit=400'}),
         db('store_orders',{query:'select=id,product_title,customer_email,quantity,total_cents,pay_amount_micro,status,created_at,purchase_started_at,supplier_order_id,error_message,payment_tx_hash&order=created_at.desc&limit=100'})
       ]);
       let rate=null;
