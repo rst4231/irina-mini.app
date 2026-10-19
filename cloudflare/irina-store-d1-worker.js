@@ -1,0 +1,152 @@
+// Private Cloudflare D1 backend for the ADSPLY section of Irina.
+// Requires a secret STORE_D1_TOKEN and a D1 binding STORE_DB.
+// It deliberately exposes no raw SQL endpoint and no browser CORS permission.
+const TABLES = Object.freeze({
+  store_settings: ['key','value','updated_at'],
+  store_products: ['id','provider','provider_listing_id','slug','title','category','description','supplier_price_cents','stock','published','last_synced_at'],
+  store_orders: ['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','payment_tx_hash','ip_hash','status','supplier_order_id','delivery_ciphertext','error_message','pay_amount_micro','purchase_started_at','created_at','updated_at']
+});
+const TEXT_LIMIT=256 * 1024;
+const STATUSES = new Set(['awaiting_payment','fulfilling','fulfilled','needs_review','cancelled']);
+const META_ACCOUNT_CATEGORY=/(?:\bfacebook\b|\binstagram\b|\bmeta\b|\bthreads\b|\bwhatsapp\b|\bbusiness manager\b|\bfb accounts?\b)/i;
+const NON_ACCOUNT_CATEGORY=/(?:\b(?:likes?|followers?|views?|comments?|boosts?|reactions?|engagement|services?)\b)/i;
+function allowedCategory(value){return typeof value==='string'&&META_ACCOUNT_CATEGORY.test(value)&&!NON_ACCOUNT_CATEGORY.test(value)}
+function reply(data,status=200){return new Response(JSON.stringify(data),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}})}
+function problem(status,message){return reply({error:message},status)}
+function authorized(req,secret){
+  const supplied=req.headers.get('Authorization')?.replace(/^Bearer /i,'')||'';
+  if(typeof secret!=='string'||secret.length<32||supplied.length!==secret.length)return false;
+  let diff=0;for(let i=0;i<secret.length;i++)diff|=secret.charCodeAt(i)^supplied.charCodeAt(i);
+  return diff===0;
+}
+function safeSelect(table, value){
+  if(value==='*'||!value)return '*';
+  const allowed=new Set(TABLES[table]);
+  const cols=value.split(',');
+  if(!cols.length||cols.some(c=>!allowed.has(c)))throw Error('Invalid selection');
+  return cols.join(',');
+}
+function rows(result,table){
+  return result.results.map(record=>{
+    if(table==='store_settings'&&Object.hasOwn(record,'value'))record.value=JSON.parse(record.value);
+    if(table==='store_products'&&Object.hasOwn(record,'published'))record.published=record.published===1;
+    return record;
+  });
+}
+function filters(table, params){
+  const where=[];const values=[];
+  const permitted=table==='store_orders'?new Set(['id','ip_hash','created_at','status']):table==='store_products'?new Set(['id','published']):new Set();
+  for(const [name,filter] of params){
+    if(['select','order','limit','on_conflict'].includes(name))continue;
+    if(!permitted.has(name))throw Error('Invalid filter');
+    const at=filter.indexOf('.');const mode=filter.slice(0,at);let val=filter.slice(at+1);
+    if(at<1||!['eq','gte'].includes(mode)||(mode==='gte'&&name!=='created_at'))throw Error('Invalid filter');
+    if(name==='published')val=val==='true'?1:val==='false'?0:NaN;
+    if(name==='id'&&table==='store_products')val=Number(val);
+    if(typeof val==='number'&&!Number.isSafeInteger(val))throw Error('Invalid filter');
+    where.push(`${name} ${mode==='eq'?'=':'>='} ?`);values.push(val);
+  }
+  return {sql:where.length?' WHERE '+where.join(' AND '):'',values};
+}
+async function selectRows(db,table,queryString){
+  const params=new URLSearchParams(queryString);
+  const cols=safeSelect(table,params.get('select'));
+  const {sql,values}=filters(table,params);
+  const order=params.get('order');let orderSql='';
+  if(order){
+    const [column,direction,...rest]=order.split('.');
+    if(rest.length||!TABLES[table].includes(column)||!['asc','desc'].includes(direction))throw Error('Invalid sort');
+    orderSql=` ORDER BY ${column} ${direction.toUpperCase()}`;
+  }
+  const count=params.get('limit')===null?400:Number(params.get('limit'));
+  if(!Number.isSafeInteger(count)||count<1||count>500)throw Error('Invalid limit');
+  return rows(await db.prepare(`SELECT ${cols} FROM ${table}${sql}${orderSql} LIMIT ?`).bind(...values,count).all(),table);
+}
+async function saveSetting(db,body){
+  if(!body||!['markup_pct','checkout_enabled','supplier_resale_approved','usdt_trc20_wallet','sync_cursor','auto_fulfillment_enabled'].includes(body.key))throw Error('Invalid setting');
+  await db.prepare("INSERT INTO store_settings(key,value,updated_at) VALUES(?,?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value,updated_at=excluded.updated_at")
+    .bind(body.key,JSON.stringify(body.value),new Date().toISOString()).run();
+  return [];
+}
+async function changeProduct(db,params,body){
+  const id=params.get('id');
+  if(!/^eq\.\d+$/.test(id||'')||typeof body?.published!=='boolean')throw Error('Invalid publish');
+  if(body.published){const item=await db.prepare('SELECT category FROM store_products WHERE id=?').bind(Number(id.slice(3))).all();if(!item.results.length||!allowedCategory(item.results[0].category))throw Error('Invalid category');}
+  await db.prepare('UPDATE store_products SET published=? WHERE id=?').bind(Number(body.published),Number(id.slice(3))).run();
+  return [];
+}
+async function addOrder(db,body){
+  const keys=['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','status','ip_hash','pay_amount_micro'];
+  if(!body||!keys.every(k=>Object.hasOwn(body,k))||body.status!=='awaiting_payment'||!Number.isSafeInteger(body.product_id)||!Number.isSafeInteger(body.quantity)||body.quantity<1||body.quantity>20||!['TRC20'].includes(body.pay_network)||!Number.isSafeInteger(body.pay_amount_micro)||body.pay_amount_micro!==body.total_cents*10000+body.pay_amount_micro%10000||body.pay_amount_micro%10000===0)throw Error('Invalid order');
+  await db.prepare(`INSERT INTO store_orders(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).bind(...keys.map(k=>body[k])).run();
+  return [];
+}
+async function transitionOrder(db,params,body){
+  const id=params.get('id'),from=params.get('status');
+  if(!/^eq\.[0-9a-f-]{36}$/i.test(id||'')||!/^eq\.[a-z_]+$/.test(from||'')||!STATUSES.has(body?.status))throw Error('Invalid order transition');
+  const before=from.slice(3),to=body.status;
+  const allowed={awaiting_payment:['fulfilling','cancelled'],needs_review:['fulfilling'],fulfilling:['fulfilled','needs_review']};
+  if(!allowed[before]?.includes(to))throw Error('Invalid status change');
+  const extra=Object.entries(body).filter(([k])=>k!=='status');
+  const permitted={
+    'awaiting_payment:fulfilling':['payment_tx_hash'],
+    'awaiting_payment:cancelled':[],
+    'needs_review:fulfilling':[],
+    'fulfilling:fulfilled':['supplier_order_id','delivery_ciphertext','error_message'],
+    'fulfilling:needs_review':['error_message']
+  }[`${before}:${to}`];
+  if(extra.some(([k])=>!permitted.includes(k)))throw Error('Invalid status data');
+  if(before==='awaiting_payment'&&to==='fulfilling'&&!/^[a-f0-9]{64}$/.test(body.payment_tx_hash||''))throw Error('Invalid transaction hash');
+  if(to==='fulfilled'&&(!body.delivery_ciphertext||!body.supplier_order_id))throw Error('Missing delivery');
+  const columns=['status','updated_at',...extra.map(([k])=>k)];
+  const values=[to,new Date().toISOString(),...extra.map(([,v])=>v)];
+  const stmt=`UPDATE store_orders SET ${columns.map(k=>`${k}=?`).join(',')} WHERE id=? AND status=? RETURNING *`;
+  return rows(await db.prepare(stmt).bind(...values,id.slice(3),before).all(),'store_orders');
+}
+async function beginPurchase(db,id){
+  if(typeof id!=='string'||!/^[a-f0-9-]{36}$/i.test(id))throw Error('Invalid order ID');
+  const result=await db.prepare("UPDATE store_orders SET purchase_started_at=?,updated_at=? WHERE id=? AND status='fulfilling' AND purchase_started_at IS NULL RETURNING id")
+    .bind(new Date().toISOString(),new Date().toISOString(),id).all();
+  return [{claimed:result.results.length===1}];
+}
+async function syncProducts(db,payload){
+  if(!Array.isArray(payload)||payload.length>200)throw Error('Invalid inventory batch');
+  if(!payload.length)return [];
+  const fields=['provider','provider_listing_id','slug','title','category','description','supplier_price_cents','stock'];
+  const prepared=payload.map(p=>{
+    if(p.provider!=='adsplus'||!allowedCategory(p.category)||!Number.isSafeInteger(p.provider_listing_id)||p.provider_listing_id<1||!Number.isSafeInteger(p.supplier_price_cents)||p.supplier_price_cents<0||!Number.isSafeInteger(p.stock)||p.stock<0||typeof p.slug!=='string'||p.slug.length>250||!p.slug||!p.title||p.title.length>150)throw Error('Invalid supplier item');
+    const sql=`INSERT INTO store_products(${fields.join(',')},last_synced_at) VALUES(${fields.map(()=>'?').join(',')},?) ON CONFLICT(provider,provider_listing_id) DO UPDATE SET slug=excluded.slug,title=excluded.title,category=excluded.category,description=excluded.description,supplier_price_cents=excluded.supplier_price_cents,stock=excluded.stock,last_synced_at=excluded.last_synced_at`;
+    return db.prepare(sql).bind(...fields.map(k=>p[k]),new Date().toISOString());
+  });
+  await db.batch(prepared);
+  return [];
+}
+export async function handleRequest(request,env){
+  if(new URL(request.url).pathname!=='/internal'||request.method!=='POST')return problem(404,'Not found');
+  if(!authorized(request,env.STORE_D1_TOKEN))return problem(401,'Unauthorized');
+  if(!env.STORE_DB)return problem(503,'Database unavailable');
+  if(Number(request.headers.get('content-length')||0)>TEXT_LIMIT)return problem(413,'Request too large');
+  let input;
+  try{const txt=await request.text();if(txt.length>TEXT_LIMIT)return problem(413,'Request too large');input=JSON.parse(txt);}catch{return problem(400,'Invalid JSON');}
+  const {table,method='GET',query='',body}=input||{};
+  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase'].includes(table))return problem(400,'Invalid resource');
+  if(typeof query!=='string'||query.length>2000)return problem(400,'Invalid query');
+  try{
+    const params=new URLSearchParams(query);let result;
+    if(method==='GET'&&TABLES[table])result=await selectRows(env.STORE_DB,table,query);
+    else if(method==='POST'&&table==='store_settings')result=await saveSetting(env.STORE_DB,body);
+    else if(method==='PATCH'&&table==='store_products')result=await changeProduct(env.STORE_DB,params,body);
+    else if(method==='POST'&&table==='store_orders')result=await addOrder(env.STORE_DB,body);
+    else if(method==='PATCH'&&table==='store_orders')result=await transitionOrder(env.STORE_DB,params,body);
+    else if(method==='POST'&&table==='rpc/store_sync_products')result=await syncProducts(env.STORE_DB,body?.payload);
+    else if(method==='POST'&&table==='rpc/store_begin_purchase')result=await beginPurchase(env.STORE_DB,body?.id);
+    else return problem(405,'Operation not allowed');
+    return reply(result);
+  }catch(e){
+    if(/^(Invalid|Missing)/.test(String(e.message)))return problem(400,'Invalid input');
+    if(/UNIQUE constraint failed/.test(String(e.message)))return problem(409,'Duplicate record');
+    console.error('store_d1_failed',String(e.message||e).slice(0,180));
+    return problem(503,'Database operation failed');
+  }
+}
+export default {fetch:handleRequest};

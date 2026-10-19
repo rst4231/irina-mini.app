@@ -1,21 +1,30 @@
-# ADSPLY within Irina Mini App
+# ADSPLY — Meta account storefront inside Irina
 
-**Only new files** have been added. Nothing in the Irina homepage, book pages, their APIs, or `vercel.json` has been edited. Vercel `cleanUrls: true` already serves `/store` from `store.html`, and `/store/admin` and `/store/order` from their `.html` counterparts, as it does `/book`.
+## Components
+- `/store` storefront; `/store/admin` authenticated admin; `/store/order` private receipt.
+- `/api/store/*`: Vercel backend, secrets stay server-side.
+- `cloudflare/irina-store-d1-worker.js`: private D1 Worker (D1 binding `STORE_DB`) called with a long bearer token; no public database access.
+- Database `irina-miniapp-store` is separate from the rest of Irina; no homepage link.
 
-- `/store`: RU/EN digital products storefront, with light/dark themes. No link on the main Irina page.
-- `/store/admin`: private admin token form; all admin API routes require the token.
-- `/store/order`: order status via private receipt URL.
-- `/api/store/*`: isolated catalog/order/admin APIs.
-- `/lib/store/*`: isolated supplier/database/cryptography.
+## Before enabling checkout (required, production)
 
-**Demo mode** until database and vendor rights are configured. Checkout off by default.
+1. Create Cloudflare Worker with `STORE_DB` D1 binding and secret `STORE_D1_TOKEN`, and configure HTTPS URL (`/internal`) and the identical token in the Vercel project as `STORE_D1_URL` and `STORE_D1_TOKEN`.
+2. Set `STORE_ADSPLUS_API_KEY` as an encrypted Vercel environment secret. Account catalog ONLY uses ADSPLUS `/en/accounts/api/v3/*` (not SMM, OTP or proxies). Confirm sourcing and resale permissions before manually publishing individual SKUs. Personal Meta account transfers may breach Meta terms.
+3. Set `STORE_ADMIN_TOKEN` (32+ random characters), and `STORE_DELIVERY_ENCRYPTION_KEY` (32 random bytes in hex). Never log delivery credentials or expose keys client-side.
+4. Set `STORE_TRONSCAN_API_KEY` to use TRONSCAN's transaction-info API, and `STORE_PAYMENT_CONFIRMATION_MODE=tronscan`. Verify the API has access to network mainnet and stable quotas.
+5. Admin config: add YOUR valid USDT TRC20 wallet, confirm reseller permission, review only appropriate Meta inventory, enable checkout. To permit automatic buying after on-chain verification ALSO set `STORE_ALLOW_AUTOFULFILL=true` on the server, then set `auto_fulfillment_enabled` in admin. These flags intentionally default to false.
 
-## Before real sales
+## Payment flow
+- ADSPLUS charges THB. Frankfurter v2 (`/v2/rate/thb/usd`) provides daily THB/USD with a 3% FX safety buffer; quotes are USD/USDT cents. Expired or unavailable rates fail closed.
+- Each order has a unique 6-decimal USDT amount. Receipt has TXID input; backend confirms transaction hash, 20 confirmations, success, exact official USDT TRC20 contract, correct wallet and exact amount, and transfer time within 24 hours after invoice; TXID is one-use only.
+- The customer invokes verification by providing TXID. This is NOT autonomous address monitoring. To implement polling/on-chain webhook later, add a verified provider integration and clear retry semantics.
+- Only after verified payment is the order marked `fulfilling` atomically in D1. If enabled, backend attempts buying from ADSPLUS once. Supplier has no documented idempotency key for account purchases; durable `purchase_started_at` prevents a retry. Ambiguous vendor outcomes require manual reconciliation via ADSPLUS order history before manual delivery/refund.
+- Seller balance at ADSPLUS must be funded separately from buyer USDT payments; no direct card processing or crypto custody is implemented.
+- The original AccsZone/Supabase implementation is superseded, but retained SQL history isn't used by the new backend.
 
-1. Create separate Supabase project, run `store/schema.sql`; set `STORE_SUPABASE_URL`, `STORE_SUPABASE_SERVICE_ROLE_KEY` in the existing **Irina Vercel project**. Do not reuse Irina business API credentials.
-2. Obtain supplier reseller permission and API key; set `STORE_ACCSZONE_API_KEY`. Account transfers that violate Meta rules must not be sold.
-3. Set a high-entropy `STORE_ADMIN_TOKEN` and `STORE_DELIVERY_ENCRYPTION_KEY` (64 hex digits, 32 bytes).
-4. Carefully inspect and manually publish only eligible items through `/store/admin`.
-5. Set USDT TRC20 wallet and manually verify payments on-chain before fulfillment. Until legal rights, payment, and DB are validated leave checkout disabled.
+## Test
+`node --test tests/store-*.test.mjs`. Existing Irina tests: `npm test` from repository root.
 
-No automatic paid orders, resale rights, or provider connection are included in this patch.
+## Security
+- Never use private wallet keys in this app. No signing of chain transactions. Each receipt URL contains a private random lookup token. Use a fresh ADSPLUS API key after rotating any key previously shared in chat.
+- Keep checkout and auto-fulfilment disabled until realistic end-to-end payment tests, concurrency tests, stock checks, legal terms and refunds/reconciliation are verified.
