@@ -78,7 +78,7 @@ async function changeProduct(db,params,body){
 async function addOrder(db,body){
   const keys=['id','lookup_hash','customer_email','product_id','product_title','quantity','unit_price_cents','supplier_unit_price_cents','total_cents','pay_network','pay_wallet','status','ip_hash','pay_amount_micro'];
   if(!body||!keys.every(k=>Object.hasOwn(body,k))||body.status!=='awaiting_payment'||!Number.isSafeInteger(body.product_id)||!Number.isSafeInteger(body.quantity)||body.quantity<1||body.quantity>20||!['TRC20'].includes(body.pay_network)||!Number.isSafeInteger(body.pay_amount_micro)||body.pay_amount_micro!==body.total_cents*10000+body.pay_amount_micro%10000||body.pay_amount_micro%10000===0)throw Error('Invalid order');
-  if(body.telegram_user_id!==undefined){if(!/^\\d{1,20}$/.test(String(body.telegram_user_id)))throw Error('Invalid Telegram user ID');keys.push('telegram_user_id');}
+  if(body.telegram_user_id!==undefined){if(!/^\d{1,20}$/.test(String(body.telegram_user_id)))throw Error('Invalid Telegram user ID');keys.push('telegram_user_id');}
   await db.prepare(`INSERT INTO store_orders(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`).bind(...keys.map(k=>body[k])).run();
   return [];
 }
@@ -111,7 +111,7 @@ async function beginPurchase(db,id){
   return [{claimed:result.results.length===1}];
 }
 
-function goodTelegramId(value){return typeof value==='string'&&/^\\d{1,20}$/.test(value)&&BigInt(value)>0n;}
+function goodTelegramId(value){return typeof value==='string'&&/^\d{1,20}$/.test(value)&&BigInt(value)>0n;}
 async function upsertStoreUser(db,body){
   if(!body||!goodTelegramId(body.telegram_id)||typeof body.first_name!=='string'||body.first_name.length>100||typeof body.username!=='string'||body.username.length>64)throw Error('Invalid Telegram account');
   await db.prepare("INSERT INTO store_users(telegram_id,first_name,username) VALUES(?,?,?) ON CONFLICT(telegram_id) DO UPDATE SET first_name=excluded.first_name,username=excluded.username,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
