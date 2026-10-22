@@ -131,6 +131,16 @@ async function beginPurchase(db,id){
 }
 
 function goodTelegramId(value){return typeof value==='string'&&/^\d{1,20}$/.test(value)&&BigInt(value)>0n;}
+const HOME_SECTIONS = new Set(['recruitment','about','theory','practice','book','store','mentor']);
+async function homeSectionViews(db,body){
+  if(!body||!goodTelegramId(body.telegram_id)||!['list','mark'].includes(body.action))throw Error('Invalid home sections request');
+  if(body.action==='mark'){
+    if(!HOME_SECTIONS.has(body.section))throw Error('Invalid home section');
+    await db.prepare('INSERT OR IGNORE INTO home_section_views(telegram_id,section_key) VALUES(?,?)').bind(body.telegram_id,body.section).run();
+  }
+  const result=await db.prepare('SELECT section_key FROM home_section_views WHERE telegram_id=?').bind(body.telegram_id).all();
+  return [{seen:result.results.map(row=>row.section_key)}];
+}
 async function upsertStoreUser(db,body){
   if(!body||!goodTelegramId(body.telegram_id)||typeof body.first_name!=='string'||body.first_name.length>100||typeof body.username!=='string'||body.username.length>64)throw Error('Invalid Telegram account');
   await db.prepare("INSERT INTO store_users(telegram_id,first_name,username) VALUES(?,?,?) ON CONFLICT(telegram_id) DO UPDATE SET first_name=excluded.first_name,username=excluded.username,updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
@@ -218,7 +228,7 @@ export async function handleRequest(request,env,ctx){
   let input;
   try{const txt=await request.text();if(txt.length>TEXT_LIMIT)return problem(413,'Request too large');input=JSON.parse(txt);}catch{return problem(400,'Invalid JSON');}
   const {table,method='GET',query='',body}=input||{};
-  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase','rpc/store_upsert_user','rpc/store_claim_order','rpc/store_admin_orders'].includes(table))return problem(400,'Invalid resource');
+  if(!TABLES[table]&&!['rpc/store_sync_products','rpc/store_begin_purchase','rpc/store_upsert_user','rpc/store_claim_order','rpc/store_admin_orders','rpc/store_home_sections'].includes(table))return problem(400,'Invalid resource');
   if(typeof query!=='string'||query.length>2000)return problem(400,'Invalid query');
   try{
     const params=new URLSearchParams(query);let result;
@@ -232,6 +242,7 @@ export async function handleRequest(request,env,ctx){
     else if(method==='POST'&&table==='rpc/store_begin_purchase')result=await beginPurchase(env.STORE_DB,body?.id);
     else if(method==='POST'&&table==='rpc/store_upsert_user')result=await upsertStoreUser(env.STORE_DB,body);
     else if(method==='POST'&&table==='rpc/store_claim_order')result=await claimStoreOrder(env.STORE_DB,body);
+    else if(method==='POST'&&table==='rpc/store_home_sections')result=await homeSectionViews(env.STORE_DB,body);
     else return problem(405,'Operation not allowed');
     return reply(result);
   }catch(e){

@@ -32,6 +32,12 @@ CREATE TABLE IF NOT EXISTS store_users (
  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
 );
+CREATE TABLE IF NOT EXISTS home_section_views (
+ telegram_id TEXT NOT NULL,
+ section_key TEXT NOT NULL,
+ viewed_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+ PRIMARY KEY (telegram_id, section_key)
+);
 CREATE TABLE IF NOT EXISTS store_orders (
  id TEXT PRIMARY KEY,
  lookup_hash TEXT NOT NULL UNIQUE,
