@@ -1,6 +1,7 @@
 // Recruitment and participation terms open inside the Telegram Mini App.
 (function () {
   const HOST = 'team.arbstart.tech';
+  const TERMS_HOST = 'arbstart.tech';
   const buttonId = 'join-team-button';
   let viewer = null;
   let frame = null;
@@ -8,10 +9,10 @@
   let previousOverflow = '';
   let historyArmed = false;
 
-  function allowedUrl(value) {
+  function allowedUrl(value, isTerms) {
     try {
       const url = new URL(value, window.location.href);
-      return url.protocol === 'https:' && url.hostname === HOST ? url.href : null;
+      return url.protocol === 'https:' && url.hostname === (isTerms ? TERMS_HOST : HOST) ? url.href : null;
     } catch {
       return null;
     }
@@ -129,9 +130,9 @@
     if (!(target instanceof Element)) return;
     const anchor = target.closest('a[href]');
     if (!anchor || (anchor.id !== buttonId && anchor.id !== 'application-button') || anchor.hidden || anchor.closest('[hidden]')) return;
-    const url = allowedUrl(anchor.href);
-    if (!url) return;
     const isTerms = anchor.id === 'application-button';
+    const url = allowedUrl(anchor.href, isTerms);
+    if (!url) return;
     if (isTerms && !/^\/win-win\/?$/.test(new URL(url).pathname)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
@@ -154,3 +155,4 @@
     }
   });
 })();
+

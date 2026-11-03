@@ -32,7 +32,7 @@ async function viewerHarness(id, href) {
 }
 
 test('terms open inside the app and Back restores the previous screen', async () => {
-  const url = 'https://team.arbstart.tech/win-win/';
+  const url = 'https://arbstart.tech/win-win/';
   const { nodes, event, document, handlers } = await viewerHarness('application-button', url);
   assert.equal(event.defaultPrevented, true);
   const frame = nodes.find((node) => node.tag === 'iframe');
@@ -79,3 +79,4 @@ test('content security policy allows the HTTPS team page to be embedded', async 
     .find((item) => item.key === 'Content-Security-Policy')?.value || '';
   assert.match(csp, /frame-src[^;]*https:\/\/team\.arbstart\.tech/);
 });
+
