@@ -114,3 +114,13 @@ test('stale Telegram navigation cache does not replace fresh review URL', async 
   assert.equal(config.version, 2);
   assert.match(defaults, /version: 2,/);
 });
+
+test('application card and its freshness label are hidden by default without removing status logic', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  const config = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
+  assert.match(html, /id="application-card"[^>]*\bhidden\b/);
+  assert.match(source, /applicationCard\.hidden = paid \|\| !runtimeConfig\.features\.application;/);
+  assert.match(source, /freshnessIndicator\.hidden = applicationCard\.hidden \|\| !text;/);
+  assert.equal(config.features.application, false);
+});

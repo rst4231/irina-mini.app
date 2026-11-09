@@ -30,6 +30,7 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
   version: 2,
   book: {prices: {profit: {rub:690,usd:8.28},beginner: {rub:590,usd:7.08}}},
   features: {
+    application: false,
     recruitment: true,
     about: true,
     book: true,

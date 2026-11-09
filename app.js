@@ -228,7 +228,7 @@ function renderFreshness() {
   if (!freshnessIndicator) return;
   const text = formatFreshnessText();
   freshnessIndicator.textContent = text;
-  freshnessIndicator.hidden = !text;
+  freshnessIndicator.hidden = applicationCard.hidden || !text;
 }
 
 function renderProfileDate() {
@@ -342,7 +342,7 @@ function renderVisibility() {
   const paid = Boolean(lastProfileData?.hasPaymentTag) && !Boolean(lastProfileData?.applicationRejected);
   appContent?.classList.toggle('has-payment', paid);
 
-  applicationCard.hidden = paid;
+  applicationCard.hidden = paid || !runtimeConfig.features.application;
   joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
   aboutButton.hidden = paid || !runtimeConfig.features.about;
   bookButton.hidden = paid || !runtimeConfig.features.book;

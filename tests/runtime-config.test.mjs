@@ -45,3 +45,9 @@ test('home recruitment and account store text live in runtime config', () => {
   assert.equal(changed.copy.storeSubtitle,'Новые аккаунты');
   assert.equal(changed.copy.storeTitle,'Каталог');
 });
+
+test('application status card defaults to hidden and can be toggled through runtime config', () => {
+  assert.equal(mergeRuntimeConfig().features.application, false);
+  assert.equal(mergeRuntimeConfig({ features: { application: true } }).features.application, true);
+  assert.equal(mergeRuntimeConfig({ features: { application: 'true' } }).features.application, false);
+});
