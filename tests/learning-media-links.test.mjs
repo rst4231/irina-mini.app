@@ -22,7 +22,7 @@ test('media Worker serves KV images and does not contain temporary import endpoi
   assert.ok(!worker.includes('__irina_restore'));
 });
 
-test('paid lesson authorization still requires confirmed SendPulse access', async () => {
+test('paid lesson worker still requires explicit server authorization', async () => {
   const worker = await read('../cloudflare/irina-learning-api.js');
   assert.ok(worker.includes('AUTH_URL'));
   assert.ok(worker.includes('authorized!==true'));

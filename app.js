@@ -1,7 +1,6 @@
 import { normalizeTelegramUser, formatProfileDate } from './profile.js';
 import { resolveLaunchData } from './learning-auth-session.js';
-import { getApplicationViewState } from './application.js';
-import { DEFAULT_RUNTIME_CONFIG, getProfilePollInterval, mergeRuntimeConfig } from './runtime-config.js';
+import { DEFAULT_RUNTIME_CONFIG, mergeRuntimeConfig } from './runtime-config.js';
 import { getStoredJson, normalizeInsets, resolveTheme, setStoredJson } from './telegram-runtime.js';
 
 const t = (text, values) => window.AppLanguage?.t(text, values) || text;
@@ -29,13 +28,10 @@ function getGreetingName() {
   return telegramName.trim().split(/\s+/)[0] || 'Пользователь';
 }
 
-const PROFILE_STORAGE_KEY = 'irina.profile.v2';
 const CONFIG_STORAGE_KEY = 'irina.runtime-config.v1';
 const APP_VERSION_STORAGE_KEY = 'irina.app-version.v1';
-const PENDING_ACTION_STORAGE_KEY = 'irina.pending-action.v1';
 const APP_VERSION_CHECK_INTERVAL_MS = 60000;
 const REFRESH_COOLDOWN_MS = 1200;
-const PENDING_ACTION_MAX_AGE_MS = 10 * 60 * 1000;
 
 const loadingScreen = document.getElementById('loading-screen');
 const appShell = document.getElementById('app-shell');
@@ -70,38 +66,18 @@ const footerChannel = document.getElementById('footer-channel');
 const appVersion = document.getElementById('app-version');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 
-const APPLICATION_ICONS = {
-  form: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M6 3h9l4 4v14H6V3Zm8 1.8V8h3.2L14 4.8ZM9 12h7v2H9v-2Zm0 4h7v2H9v-2Z"/></svg>',
-  pending: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 3a9 9 0 1 0 9 9h-2a7 7 0 1 1-2.1-5l-2.4 2.4H21V3l-2.7 2.7A9 9 0 0 0 12 3Zm-1 4h2v5.2l3.5 2.1-1 1.7-4.5-2.7V7Z"/></svg>',
-  approved: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 2.8 15 5l3.7.1 1.1 3.5 2.2 3-2.2 3-1.1 3.5-3.7.1-3 2.2-3-2.2-3.7-.1-1.1-3.5-2.2-3 2.2-3 1.1-3.5L9 5l3-2.2Zm-1.2 12.6 6-6-1.4-1.4-4.6 4.6-2.2-2.2-1.4 1.4 3.6 3.6Z"/></svg>',
-  rejected: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M12 3 2.6 20h18.8L12 3Zm0 6v5m0 3v.2" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  terms: '<svg class="icon-svg" viewBox="0 0 24 24" focusable="false"><path d="M5 3h14v18H5V3Zm3 4h8V5H8v2Zm0 4h8V9H8v2Zm0 4h5v-2H8v2Zm7.2 3.4 4.1-4.1-1.4-1.4-2.7 2.7-1.2-1.2-1.4 1.4 2.6 2.6Z"/></svg>',
-};
-
 let runtimeConfig = mergeRuntimeConfig(DEFAULT_RUNTIME_CONFIG);
-let lastProfileData = null;
-let lastProfileStale = false;
-let lastProfileSavedAt = 0;
-let previousApplicationTone = null;
-let profileTimer = null;
 let configTimer = null;
 let versionTimer = null;
 let freshnessTimer = null;
-let profileLoadInFlight = false;
-let profileLoadFailed = false;
 let configLoadInFlight = false;
 let versionCheckInFlight = false;
 let versionReloadScheduled = false;
 let fullscreenRequestedByApp = false;
 let lastRefreshRequestAt = 0;
-let pendingRefreshTimers = [];
 
 function hapticImpact(style = 'light') {
   try { telegram?.HapticFeedback?.impactOccurred?.(style); } catch {}
-}
-
-function hapticSuccess() {
-  try { telegram?.HapticFeedback?.notificationOccurred?.('success'); } catch {}
 }
 
 function getStoredAppVersion() {
@@ -166,69 +142,11 @@ async function checkAppVersion() {
   }
 }
 
-function getPendingAction() {
-  try {
-    const raw = window.localStorage.getItem(PENDING_ACTION_STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const createdAt = Number(parsed?.createdAt || 0);
-    if (!createdAt || Date.now() - createdAt > PENDING_ACTION_MAX_AGE_MS) {
-      window.localStorage.removeItem(PENDING_ACTION_STORAGE_KEY);
-      return null;
-    }
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function setPendingAction(tone) {
-  try {
-    window.localStorage.setItem(PENDING_ACTION_STORAGE_KEY, JSON.stringify({
-      tone: tone || '',
-      createdAt: Date.now(),
-    }));
-  } catch {}
-}
-
-function clearPendingAction() {
-  try { window.localStorage.removeItem(PENDING_ACTION_STORAGE_KEY); } catch {}
-  for (const timer of pendingRefreshTimers) clearTimeout(timer);
-  pendingRefreshTimers = [];
-}
-
-function queuePendingActionRefreshes() {
-  if (!getPendingAction() || !hasTelegramContext) return;
-  for (const timer of pendingRefreshTimers) clearTimeout(timer);
-  pendingRefreshTimers = [2500, 7000, 15000, 30000].map((delay) => (
-    setTimeout(() => loadSendPulseProfile({ silent: true }), delay)
-  ));
-}
-
 function showSyncError(show) {
   if (!syncError) return;
   syncError.hidden = !show;
   if (show && syncErrorText) syncErrorText.textContent = t(runtimeConfig.copy.syncError);
   if (syncRetryButton) syncRetryButton.textContent = t(runtimeConfig.copy.retry);
-}
-
-function formatFreshnessText() {
-  if (!lastProfileSavedAt || !runtimeConfig.ui.showFreshness) return '';
-  const ageMinutes = Math.max(0, Math.floor((Date.now() - lastProfileSavedAt) / 60000));
-  if (lastProfileStale) {
-    const time = new Date(lastProfileSavedAt).toLocaleTimeString(window.AppLanguage?.language === 'en' ? 'en-US' : 'ru-RU', { hour: '2-digit', minute: '2-digit' });
-    return t(runtimeConfig.copy.cachedAt).replace('{time}', time);
-  }
-  if (ageMinutes < 1) return t(runtimeConfig.copy.updatedNow);
-  return t(runtimeConfig.copy.updatedMinutes).replace('{n}', String(ageMinutes));
-}
-
-function renderFreshness() {
-  renderProfileDate();
-  if (!freshnessIndicator) return;
-  const text = formatFreshnessText();
-  freshnessIndicator.textContent = text;
-  freshnessIndicator.hidden = applicationCard.hidden || !text;
 }
 
 function renderProfileDate() {
@@ -238,7 +156,7 @@ function renderProfileDate() {
 function scheduleFreshnessTick() {
   clearTimeout(freshnessTimer);
   freshnessTimer = setTimeout(() => {
-    renderFreshness();
+    renderProfileDate();
     scheduleFreshnessTick();
   }, 30000);
 }
@@ -249,8 +167,7 @@ function refreshAppState({ force = false } = {}) {
   lastRefreshRequestAt = now;
   checkAppVersion();
   loadRuntimeConfig({ silent: true });
-  loadSendPulseProfile({ silent: true });
-  queuePendingActionRefreshes();
+  renderProfileDate();
 }
 
 function reorderResources() {
@@ -272,11 +189,6 @@ function reorderResources() {
   if (bookButton?.parentElement === resourceButtons) bookButton.before(theoryButton, practiceButton);
   // Keep LH STORE immediately below Guides regardless of remote resource order.
   if(bookButton?.parentElement===resourceButtons && accountStoreButton?.parentElement===resourceButtons)bookButton.after(accountStoreButton);
-}
-
-function setApplicationLoading(loading) {
-  applicationCard.classList.toggle('is-loading', loading);
-  applicationCard.setAttribute('aria-busy', loading ? 'true' : 'false');
 }
 
 function syncTelegramEnvironment() {
@@ -339,21 +251,18 @@ function setResourceContent(button, { title, subtitle, url, badge }) {
 }
 
 function renderVisibility() {
-  const paid = Boolean(lastProfileData?.hasPaymentTag) && !Boolean(lastProfileData?.applicationRejected);
-  appContent?.classList.toggle('has-payment', paid);
-
-  applicationCard.hidden = paid || !runtimeConfig.features.application;
-  joinTeamButton.hidden = paid || !runtimeConfig.features.recruitment;
-  aboutButton.hidden = paid || !runtimeConfig.features.about;
-  bookButton.hidden = paid || !runtimeConfig.features.book;
-  // The "Оплата" tag hides both beginner learning entry points even if the application status changes.
-  const hasPaidTraining = Boolean(lastProfileData?.hasPaymentTag);
-  theoryButton.hidden = hasPaidTraining || !runtimeConfig.features.theory;
-  practiceButton.hidden = hasPaidTraining || !runtimeConfig.features.practice;
+  appContent?.classList.remove('has-payment');
+  applicationCard.hidden = true;
+  joinTeamButton.hidden = !runtimeConfig.features.recruitment;
+  aboutButton.hidden = !runtimeConfig.features.about;
+  bookButton.hidden = !runtimeConfig.features.book;
+  theoryButton.hidden = !runtimeConfig.features.theory;
+  practiceButton.hidden = !runtimeConfig.features.practice;
   accountStoreButton.hidden = !runtimeConfig.features.store;
-  trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
-  mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
-  footerChannel.hidden = paid || !runtimeConfig.features.channel;
+  trustedByBlock.hidden = !runtimeConfig.features.trustedBy;
+  mentorButton.hidden = !runtimeConfig.features.mentor;
+  footerChannel.hidden = !runtimeConfig.features.channel;
+  if (freshnessIndicator) freshnessIndicator.hidden = true;
 }
 
 function applyRuntimeConfig(config) {
@@ -410,86 +319,10 @@ function applyRuntimeConfig(config) {
   }
 
   renderVisibility();
-  if (lastProfileData && (!lastProfileData.hasPaymentTag || lastProfileData.applicationRejected)) renderApplicationStatus(lastProfileData, { stale: lastProfileStale });
-  renderFreshness();
-  showSyncError(!syncError?.hidden);
+  renderProfileDate();
+  showSyncError(false);
   maybeSyncFullscreen();
-  scheduleProfileRefresh();
   scheduleConfigRefresh();
-}
-
-function renderApplicationStatus(data, { stale = false } = {}) {
-  const state = getApplicationViewState({
-    completed: Boolean(data?.applicationCompleted),
-    approved: Boolean(data?.applicationApproved),
-    receivedTerms: Boolean(data?.receivedTerms),
-    rejected: Boolean(data?.applicationRejected),
-    config: runtimeConfig,
-  });
-
-  setApplicationLoading(false);
-  applicationCard.classList.remove('is-incomplete', 'is-complete', 'is-approved', 'is-terms', 'is-rejected');
-  applicationCard.classList.add(`is-${state.tone}`);
-  applicationIcon.innerHTML = APPLICATION_ICONS[state.icon] || APPLICATION_ICONS.form;
-  applicationStatus.textContent = t(state.status);
-  applicationDescription.textContent = t(state.description);
-
-  const toneChanged = Boolean(previousApplicationTone && previousApplicationTone !== state.tone);
-  if (toneChanged) {
-    if (state.tone === 'approved' || state.tone === 'terms') hapticSuccess();
-    const pending = getPendingAction();
-    if (pending && (!pending.tone || pending.tone !== state.tone)) clearPendingAction();
-    if (runtimeConfig.ui.animations) {
-      applicationCard.classList.remove('status-changed');
-      void applicationCard.offsetWidth;
-      applicationCard.classList.add('status-changed');
-      setTimeout(() => applicationCard.classList.remove('status-changed'), 500);
-    }
-  }
-  previousApplicationTone = state.tone;
-
-  if (state.action) {
-    applicationButton.textContent = t(state.action.label);
-    applicationButton.append(' ');
-    const arrow = document.createElement('span');
-    arrow.className = 'application-arrow';
-    arrow.setAttribute('aria-hidden', 'true');
-    arrow.textContent = '→';
-    applicationButton.append(arrow);
-    applicationButton.href = state.action.url;
-    applicationButton.target = state.action.target || '_self';
-    applicationButton.dataset.closeMiniApp = state.action.closeMiniApp ? 'true' : 'false';
-    const actionHint = state.tone === 'approved' ? '' : (state.action.hint || '');
-    applicationHint.textContent = t(actionHint);
-    applicationHint.hidden = !actionHint;
-    if (state.action.target === '_blank') applicationButton.rel = 'noopener noreferrer';
-    else applicationButton.removeAttribute('rel');
-    applicationButton.hidden = false;
-  } else {
-    applicationButton.hidden = true;
-    applicationHint.hidden = true;
-    applicationButton.removeAttribute('href');
-    applicationButton.removeAttribute('target');
-    applicationButton.removeAttribute('rel');
-    applicationButton.removeAttribute('data-close-mini-app');
-  }
-
-  const pending = getPendingAction();
-  const syncText = pending ? runtimeConfig.copy.checkingChanges : (stale ? runtimeConfig.copy.staleData : '');
-  applicationSyncHint.textContent = t(syncText);
-  applicationSyncHint.hidden = !syncText;
-}
-
-function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
-  profileLoadFailed = false;
-  lastProfileData = data;
-  lastProfileStale = stale;
-  lastProfileSavedAt = Number(savedAt) || Date.now();
-  name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
-  renderVisibility();
-  if (!data?.hasPaymentTag || data.applicationRejected) renderApplicationStatus(data, { stale });
-  else setApplicationLoading(false);
-  renderFreshness();
 }
 
 function isCurrentCachedConfig(cached) {
@@ -522,87 +355,10 @@ async function loadRuntimeConfig({ silent = false } = {}) {
   }
 }
 
-async function getCachedProfile() {
-  const cached = await getStoredJson(telegram, PROFILE_STORAGE_KEY);
-  if (!cached?.data) return null;
-  if (String(cached.telegramId || '') !== String(user?.id || '')) return null;
-  return cached;
-}
-
-function scheduleProfileRefresh() {
-  if (!hasTelegramContext) return;
-  clearTimeout(profileTimer);
-  const delay = getProfilePollInterval(lastProfileData || {}, runtimeConfig);
-  profileTimer = setTimeout(() => loadSendPulseProfile({ silent: true }), delay);
-}
-
 function scheduleConfigRefresh() {
   clearTimeout(configTimer);
   configTimer = setTimeout(() => loadRuntimeConfig({ silent: true }), runtimeConfig.polling.configMs);
 }
-
-async function loadSendPulseProfile({ silent = false } = {}) {
-  if (!telegram?.initData || profileLoadInFlight) return;
-  profileLoadInFlight = true;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
-
-  try {
-    const response = await fetch('/api/profile', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: telegram.initData }),
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`Profile request failed: ${response.status}`);
-    const data = await response.json();
-    const savedAt = Date.now();
-    showSyncError(false);
-    renderProfileData(data, { stale: false, savedAt });
-    await setStoredJson(telegram, PROFILE_STORAGE_KEY, {
-      telegramId: String(user?.id || ''),
-      data,
-      savedAt,
-    });
-  } catch {
-    showSyncError(true);
-    const cached = await getCachedProfile();
-    if (cached?.data) {
-      renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
-    } else if (!silent) {
-      profileLoadFailed = true;
-      setApplicationLoading(false);
-      applicationCard.classList.remove('is-complete', 'is-approved', 'is-terms', 'is-rejected');
-      applicationCard.classList.add('is-incomplete');
-      applicationIcon.innerHTML = APPLICATION_ICONS.form;
-      applicationStatus.textContent = t('Не удалось проверить анкету');
-      applicationDescription.textContent = t('Попробуйте открыть приложение ещё раз');
-      applicationButton.hidden = true;
-      applicationHint.hidden = true;
-      applicationSyncHint.hidden = true;
-      renderFreshness();
-    }
-  } finally {
-    clearTimeout(timeout);
-    profileLoadInFlight = false;
-    scheduleProfileRefresh();
-  }
-}
-
-applicationButton.addEventListener('click', (event) => {
-  hapticImpact('medium');
-  if (previousApplicationTone === 'incomplete' || previousApplicationTone === 'approved') {
-    setPendingAction(previousApplicationTone);
-    renderApplicationStatus(lastProfileData || {}, { stale: lastProfileStale });
-  }
-  if (applicationButton.dataset.closeMiniApp !== 'true') return;
-  if (!hasTelegramContext || typeof telegram?.openTelegramLink !== 'function' || typeof telegram?.close !== 'function') return;
-  const url = applicationButton.href;
-  if (!url.startsWith('https://t.me/')) return;
-  event.preventDefault();
-  telegram.openTelegramLink(url);
-  setTimeout(() => telegram.close(), 120);
-});
 
 // Remember the Telegram launch URL only when entering the book page from
 // this Mini App. Returning Home then restores the original Telegram context.
@@ -681,27 +437,14 @@ async function startApp() {
     return;
   }
 
-  const cached = await getCachedProfile();
-  if (cached?.data) {
-    renderProfileData(cached.data, { stale: true, savedAt: cached.savedAt });
-    loadingScreen.hidden = true;
-    appShell.hidden = false;
-    loadSendPulseProfile({ silent: true });
-  } else {
-    await loadSendPulseProfile({ silent: false });
-    loadingScreen.hidden = true;
-    appShell.hidden = false;
-  }
+  loadingScreen.hidden = true;
+  appShell.hidden = false;
+  renderVisibility();
 }
 
 window.addEventListener('irinalanguagechange', () => {
   applyRuntimeConfig(runtimeConfig);
-  if (lastProfileData) renderProfileData(lastProfileData, {stale:lastProfileStale,savedAt:lastProfileSavedAt});
-  else name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
-  if (profileLoadFailed) {
-    applicationStatus.textContent = t('Не удалось проверить анкету');
-    applicationDescription.textContent = t('Попробуйте открыть приложение ещё раз');
-  }
+  name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
 });
 
 startApp();

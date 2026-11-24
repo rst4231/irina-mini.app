@@ -6,7 +6,7 @@ const telegramInitData = () => {
   try { return resolveLaunchData(tg?.initData || '', window.sessionStorage); }
   catch { return resolveLaunchData(tg?.initData || '', null); }
 };
-const purchaseURL = 'https://t.me/rstshelp_bot?start=6ad360e905eb22d6de058dac';
+const purchaseURL = '/theory';
 const sections = [
   {id:'creatives',title:'Создание креативов',description:'Идеи, рекламные подходы, пять гипотез, создание объявлений и техническое задание.',emoji:'✦'},
   {id:'infrastructure',title:'Инфраструктура Facebook Ads',description:'Домены, аккаунты, прокси, антидетект, платёжные инструменты и Pixel.',emoji:'⚙'},
@@ -269,13 +269,13 @@ async function showSection(id){
 function showPracticeTelegramGate(){
   app.innerHTML='<section class="practice-entry-gate" role="status">'+
     '<span class="practice-entry-symbol" aria-hidden="true">🔒</span>'+
-    '<h1>Откройте практику в Telegram</h1>'+
-    '<p>Практические инструкции доступны через мини-приложение Irina. Перейдите в бота, откройте Irina и выберите раздел «Практические инструкции».</p>'+
-    '<a class="button-main practice-entry-link" href="'+esc(purchaseURL)+'" target="_blank" rel="noopener noreferrer">Перейти в Telegram ↗</a>'+
+    '<h1>Практические инструкции недоступны</h1>'+
+    '<p>Продажа и доступ к этому разделу сейчас отключены.</p>'+
+    '<a class="button-main practice-entry-link" href="/theory">Перейти к теории ↗</a>'+
     '</section>';
 }
 async function run(){
-  if(page==='practice' && !telegramInitData()){
+  if(page==='practice'){
     showPracticeTelegramGate();
     return;
   }

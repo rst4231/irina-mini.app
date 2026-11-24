@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { tagPaidInvoice, UUID, emailDigest, loadBookOrder } from './order-tags.js';
+import { recordPaidInvoice, UUID, emailDigest, loadBookOrder } from './order-tags.js';
 
 function authorized(value, expected) {
   if (typeof value !== 'string' || !value || !expected) return false;
@@ -19,27 +19,27 @@ export default async function handler(req, res) {
   }
   const event = req.body && typeof req.body === 'object' ? req.body : {};
   const type = String(event.eventType || event.event_type || event.type || '').toLowerCase();
-  // Refunds, failed payments, and unknown events must never grant tags.
+  // Refunds, failed payments, and unknown events must never mark a payment processed.
   if (type !== 'payment.success') return res.status(200).json({ok:true,ignored:true});
   const invoiceId = String(event.contractId || event.invoiceId || event.data?.invoiceId || '');
   if (!UUID.test(invoiceId)) return res.status(400).json({ok:false,error:'missing_contract_id'});
   try {
     const order = await loadBookOrder(invoiceId);
-    // Other Lava products may send events to this URL; do not tag those.
+    // Other Lava products may send events to this URL; ignore those.
     if (!order) return res.status(200).json({ok:true,ignored:true});
     const buyerEmail = event?.buyer?.email || event?.customerEmail || '';
     if (buyerEmail && emailDigest(buyerEmail) !== order.email_sha256) {
       return res.status(409).json({ok:false,error:'buyer_mismatch'});
     }
-    const result = await tagPaidInvoice(invoiceId);
+    const result = await recordPaidInvoice(invoiceId);
     if (result.outcome === 'not_paid' || result.outcome === 'in_progress') {
       // Lava automatically retries non-2xx deliveries.
       return res.status(503).json({ok:false,error:'retry_later'});
     }
-    console.info('book_purchase_tag_handled', {invoiceId, result:result.outcome, book:result.bookKey});
+    console.info('book_payment_recorded', {invoiceId, result:result.outcome, book:result.bookKey});
     return res.status(200).json({ok:true,result:result.outcome});
   } catch (error) {
-    console.error('book_tag_error', {invoiceId, message:error?.message || 'unknown'});
-    return res.status(503).json({ok:false,error:'sendpulse_tag_pending'});
+    console.error('book_payment_error', {invoiceId, message:error?.message || 'unknown'});
+    return res.status(503).json({ok:false,error:'payment_record_pending'});
   }
 }

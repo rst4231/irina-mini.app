@@ -27,7 +27,7 @@ const DEFAULT_APPLICATION_COPY = {
 };
 
 export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
-  version: 3,
+  version: 4,
   book: {prices: {profit: {rub:690,usd:8.28},beginner: {rub:590,usd:7.08}}},
   features: {
     application: false,
@@ -39,7 +39,7 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     store: false,
     trustedBy: true,
     channel: true,
-    mentor: true,
+    mentor: false,
   },
   telegram: {
     requestFullscreen: false,
@@ -226,13 +226,5 @@ export function mergeRuntimeConfig(source = {}) {
   }
 
   return result;
-}
-
-export function getProfilePollInterval(profileData = {}, config = DEFAULT_RUNTIME_CONFIG) {
-  const polling = config?.polling || DEFAULT_RUNTIME_CONFIG.polling;
-  if (profileData?.hasPaymentTag || profileData?.receivedTerms) return polling.finalMs;
-  if (profileData?.applicationApproved) return polling.approvedMs;
-  if (profileData?.applicationCompleted) return polling.pendingMs;
-  return polling.idleMs;
 }
 

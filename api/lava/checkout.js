@@ -1,5 +1,5 @@
 import { readCheckoutIdentity } from './session.js';
-import { findSendpulseContact, saveBookOrder, UUID as ORDER_UUID } from './order-tags.js';
+import { saveBookOrder, UUID as ORDER_UUID } from './order-tags.js';
 // Server-only Lava.top integration. The client never receives the API key.
 const LAVA_API = 'https://gate.lava.top';
 const BOOKS = Object.freeze({
@@ -132,13 +132,6 @@ export default async function handler(req, res) {
     ? readCheckoutIdentity(req.headers.cookie || '', process.env.TELEGRAM_BOT_TOKEN)
     : null;
   try {
-    let contact = null;
-    if (telegramId) {
-      try { contact = await findSendpulseContact(telegramId); }
-      catch { // SendPulse downtime must never block book purchases.
-        console.warn('book_checkout_contact_unavailable');
-      }
-    }
     const offerId = await resolveOffer(book);
     if (req.method === 'GET') return send(res, 200, { ok:true, ready:true, book:bookKey });
     const bookParam = encodeURIComponent(bookKey);
@@ -176,7 +169,7 @@ export default async function handler(req, res) {
     }
     // Persist before exposing the checkout URL so webhook can identify buyer.
     await saveBookOrder({
-      invoiceId, bookKey, telegramId, contactId: contact?.id ?? null,
+      invoiceId, bookKey, telegramId,
       offerId, email: req.body.email,
     });
     return send(res, 200, { ok:true, paymentUrl, invoiceId });

@@ -54,11 +54,6 @@ test('profile greets the user by first name and shows the localized date instead
   assert.match(source, /formatProfileDate\(new Date\(\)/);
 });
 
-test('approved application no longer displays action timing hint', async () => {
-  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
-  assert.match(source, /state\.tone === 'approved' \? ''/);
-  assert.match(source, /applicationHint\.hidden = !actionHint/);
-});
 
 test('guide library is internal and both native pages disable zoom', async () => {
   const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
@@ -113,17 +108,17 @@ test('stale Telegram navigation cache does not replace fresh review URL', async 
   assert.match(app, /function isCurrentCachedConfig\(cached\)/);
   assert.match(app, /Number\(cached\?\.config\?\.version\) >= DEFAULT_RUNTIME_CONFIG\.version/);
   assert.equal((app.match(/if \(isCurrentCachedConfig\(cached\)\) applyRuntimeConfig\(cached\.config\);/g) || []).length, 2);
-  assert.equal(config.version, 3);
-  assert.match(defaults, /version: 3,/);
+  assert.equal(config.version, 4);
+  assert.match(defaults, /version: 4,/);
 });
 
-test('application card and its freshness label are hidden by default without removing status logic', async () => {
+test('application card and its freshness label are always hidden', async () => {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
   const config = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
   assert.match(html, /id="application-card"[^>]*\bhidden\b/);
-  assert.match(source, /applicationCard\.hidden = paid \|\| !runtimeConfig\.features\.application;/);
-  assert.match(source, /freshnessIndicator\.hidden = applicationCard\.hidden \|\| !text;/);
+  assert.match(source, /applicationCard\.hidden = true;/);
+  assert.match(source, /freshnessIndicator\.hidden = true;/);
   assert.equal(config.features.application, false);
 });
 
@@ -133,7 +128,7 @@ test('practice and account store cards are hidden by default while their routes 
   const config = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
   assert.match(html, /id="practice-button"[^>]*\bhidden\b/);
   assert.match(html, /id="account-store-button"[\s\S]*?target="_self"\s+hidden/);
-  assert.match(source, /practiceButton\.hidden = hasPaidTraining \|\| !runtimeConfig\.features\.practice;/);
+  assert.match(source, /practiceButton\.hidden = !runtimeConfig\.features\.practice;/);
   assert.match(source, /accountStoreButton\.hidden = !runtimeConfig\.features\.store;/);
   assert.equal(config.features.practice, false);
   assert.equal(config.features.store, false);

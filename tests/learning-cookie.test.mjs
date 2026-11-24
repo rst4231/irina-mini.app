@@ -30,18 +30,18 @@ test('cookie expires after 6 hours and never validates without bot secret',()=>{
   assert.equal(verifyLearningCookie('', 'bot_secret',now),null);
 });
 
-test('paid users hide both beginner learning buttons, regardless of application rejection',async()=>{
+test('homepage never changes visibility according to payment or profile tags',async()=>{
   const app=await fs.readFile(new URL('../app.js',import.meta.url),'utf8');
-  assert.match(app,/const hasPaidTraining = Boolean\(lastProfileData\?\.hasPaymentTag\)/);
-  assert.match(app,/theoryButton\.hidden = hasPaidTraining/);
-  assert.match(app,/practiceButton\.hidden = hasPaidTraining/);
+  assert.doesNotMatch(app,/hasPaymentTag|loadSendPulseProfile|\/api\/profile/);
+  assert.match(app,/theoryButton\.hidden = !runtimeConfig\.features\.theory/);
+  assert.match(app,/practiceButton\.hidden = !runtimeConfig\.features\.practice/);
 });
 
-test('paid lesson authentication keeps Telegram ID verification and matching SendPulse tag',async()=>{
+test('paid lesson authorization remains closed without an explicit grant',async()=>{
   const auth=await fs.readFile(new URL('../api/learning-authorize.js',import.meta.url),'utf8');
   const worker=await fs.readFile(new URL('../cloudflare/irina-learning-api.js',import.meta.url),'utf8');
-  assert.match(auth,/verifyLearningCookie/);
-  assert.match(auth,/grantsLearningAccess\(contact\?\.tags\|\|\[\],section\)/);
+  assert.match(auth,/respond\(res,403/);
+  assert.doesNotMatch(auth,/fetch\(/);
   assert.match(worker,/AUTH_URL/);
   assert.match(worker,/Cookie:session/);
   assert.doesNotMatch(worker,/return reply\(200,\{ok:true,lesson\}\);\s*\/\//);

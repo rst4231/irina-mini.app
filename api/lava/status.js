@@ -1,4 +1,4 @@
-import { loadBookOrder, UUID, verifyLavaInvoice, invoicePaid, invoiceMatchesOrder, tagPaidInvoice } from './order-tags.js';
+import { loadBookOrder, UUID, verifyLavaInvoice, invoicePaid, invoiceMatchesOrder, recordPaidInvoice } from './order-tags.js';
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
@@ -17,8 +17,8 @@ export default async function handler(req, res) {
     const paid = invoicePaid(invoice);
     // Recovery path if Lava redirected before the webhook arrived.
     if (paid && !order.tagged) {
-      try { await tagPaidInvoice(invoiceId, invoice); }
-      catch (error) { console.error('book_tag_recovery_error', error?.message || 'unknown'); }
+      try { await recordPaidInvoice(invoiceId, invoice); }
+      catch (error) { console.error('book_payment_recovery_error', error?.message || 'unknown'); }
     }
     return res.status(200).json({ok:true,paid,pending:!paid});
   } catch {

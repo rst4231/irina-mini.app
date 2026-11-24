@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {resolveLaunchData, validLaunchData, SESSION_KEY, MAX_AGE_SECONDS} from '../learning-auth-session.js';
-import {grantsLearningAccess} from '../api/learning-authorize.js';
 
 const NOW=1792241000;
 const signed = (authDate=NOW)=>new URLSearchParams({
@@ -18,15 +17,13 @@ function store(){
  };
 }
 
-test('signed Telegram data survives navigation and grants access only with a matching tag',()=>{
+test('signed Telegram data survives navigation',()=>{
  const storage=store();
  const start=resolveLaunchData(signed(),storage,NOW);
  assert.equal(start,signed());
  assert.equal(storage.getItem(SESSION_KEY),start);
  const nextPage=resolveLaunchData('',storage,NOW+15);
  assert.equal(nextPage,start);
- assert.equal(grantsLearningAccess(['Практика: Креативы'],'creatives'),true);
- assert.equal(grantsLearningAccess(['Практика: Креативы'],'launch'),false);
 });
 
 test('reject unsigned identity and expired Telegram data',()=>{

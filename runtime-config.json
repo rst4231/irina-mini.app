@@ -1,9 +1,15 @@
 {
-  "version": 3,
+  "version": 4,
   "book": {
     "prices": {
-      "profit": {"rub": 690, "usd": 8.28},
-      "beginner": {"rub": 590, "usd": 7.08}
+      "profit": {
+        "rub": 690,
+        "usd": 8.28
+      },
+      "beginner": {
+        "rub": 590,
+        "usd": 7.08
+      }
     }
   },
   "features": {
@@ -15,7 +21,7 @@
     "store": false,
     "trustedBy": true,
     "channel": true,
-    "mentor": true
+    "mentor": false
   },
   "telegram": {
     "requestFullscreen": false
@@ -103,4 +109,3 @@
     "animations": true
   }
 }
-

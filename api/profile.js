@@ -1,8 +1,6 @@
 import crypto from 'node:crypto';
 import { createLearningCookie } from './learning-cookie.js';
 
-const SENDPULSE_BOT_ID = '6671465ac84ab24b4702fa25';
-const SENDPULSE_BASE = 'https://api.sendpulse.com/telegram';
 const DEFAULT_INIT_DATA_MAX_AGE_SECONDS = 21600;
 const MAX_FUTURE_SKEW_SECONDS = 60;
 
@@ -54,53 +52,6 @@ export function validateInitData(initData, botToken, options = {}) {
   }
 }
 
-function tagNames(tags) {
-  if (!Array.isArray(tags)) return new Set();
-  return new Set(tags.map((tag) => {
-    if (typeof tag === 'string') return tag.trim();
-    return String(tag?.name ?? tag?.title ?? tag?.tag ?? '').trim();
-  }).filter(Boolean));
-}
-
-function variableValue(variables, name) {
-  if (!variables) return '';
-  if (!Array.isArray(variables) && typeof variables === 'object') {
-    const value = variables[name];
-    if (value && typeof value === 'object' && 'value' in value) return String(value.value ?? '').trim();
-    return String(value ?? '').trim();
-  }
-  if (Array.isArray(variables)) {
-    const item = variables.find((entry) => String(entry?.name ?? entry?.variable_name ?? '').trim() === name);
-    return String(item?.value ?? item?.variable_value ?? '').trim();
-  }
-  return '';
-}
-
-async function getSendPulseContact(telegramId, apiKey) {
-  const url = new URL(`${SENDPULSE_BASE}/contacts/getByTelegramId`);
-  url.searchParams.set('bot_id', SENDPULSE_BOT_ID);
-  url.searchParams.set('telegram_id', String(telegramId));
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      Accept: 'application/json',
-    },
-  });
-
-  if (response.status === 404) return null;
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    const error = new Error(`sendpulse_${response.status}`);
-    error.status = response.status;
-    error.payload = payload;
-    throw error;
-  }
-
-  if (payload && typeof payload === 'object' && 'data' in payload && payload.data) return payload.data;
-  return payload;
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -108,8 +59,7 @@ export default async function handler(req, res) {
   }
 
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
-  const sendPulseApiKey = process.env.SENDPULSE_API_KEY;
-  if (!botToken || !sendPulseApiKey) {
+  if (!botToken) {
     return json(res, 503, { ok: false, error: 'service_not_configured' });
   }
 
@@ -125,26 +75,5 @@ export default async function handler(req, res) {
   // Same-origin, HTTP-only identity ticket for navigating to paid lessons.
   res.setHeader('Set-Cookie', createLearningCookie(user.id, botToken));
 
-  try {
-    const contact = await getSendPulseContact(user.id, sendPulseApiKey);
-    const tags = tagNames(contact?.tags);
-    const applicationRejected = [...tags].some((tag) => ['не одобрена', 'мусор'].includes(tag.replace(/\s+/g, ' ').trim().toLowerCase()));
-    const hasPaymentTag = tags.has('Оплата');
-    const receivedTerms = hasPaymentTag || tags.has('Получил условия');
-    const applicationApproved = receivedTerms || tags.has('Одобрен');
-    const applicationCompleted = applicationApproved || tags.has('Заполнил');
-
-    return json(res, 200, {
-      ok: true,
-      sendPulseName: variableValue(contact?.variables, 'NAME'),
-      applicationCompleted,
-      applicationApproved,
-      applicationRejected,
-      receivedTerms,
-      hasPaymentTag,
-    });
-  } catch (error) {
-    console.error('profile_error', error?.message || error);
-    return json(res, 502, { ok: false, error: 'sendpulse_unavailable' });
-  }
+  return json(res, 200, { ok: true });
 }

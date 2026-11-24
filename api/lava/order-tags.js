@@ -1,8 +1,6 @@
 import crypto from 'node:crypto';
 
-const SENDPULSE_BASE = 'https://api.sendpulse.com/telegram';
-const SENDPULSE_BOT_ID = '6671465ac84ab24b4702fa25';
-export const TAG_BY_BOOK = Object.freeze({ profit: 'Купил книгу 1', beginner: 'Купил книгу 2' });
+const BOOK_KEYS = new Set(['profit','beginner']);
 export const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
 function fail(error, status = 502) { const e = new Error(error); e.status = status; return e; }
@@ -32,36 +30,13 @@ async function d1Query(path, data) {
   if (!response.ok || body?.ok !== true) throw fail('Cloudflare D1 отклонила операцию', 503);
   return body;
 }
-async function spFetch(path, options) {
-  if (!process.env.SENDPULSE_API_KEY) throw fail('SendPulse не настроен', 503);
-  const response = await fetch(SENDPULSE_BASE + path, {
-    ...options,
-    headers: {
-      Authorization: 'Bearer ' + process.env.SENDPULSE_API_KEY,
-      Accept: 'application/json',
-      ...(options?.body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    signal: AbortSignal.timeout(3800),
-    cache: 'no-store',
-  });
-  const result = await response.json().catch(() => ({}));
-  if (!response.ok || result?.success === false) throw fail('SendPulse недоступен: ' + response.status);
-  return result?.data && !Array.isArray(result.data) ? result.data : result;
-}
-export async function findSendpulseContact(telegramId) {
-  const params = new URLSearchParams({ bot_id: SENDPULSE_BOT_ID, telegram_id: String(telegramId) });
-  const data = await spFetch('/contacts/getByTelegramId?' + params.toString());
-  const id = String(data?.id || data?.contact_id || '');
-  if (!/^[a-f0-9]{24}$/i.test(id)) throw fail('Контакт пользователя не найден в SendPulse', 422);
-  return { id, tags: Array.isArray(data.tags) ? data.tags : [] };
-}
-export async function saveBookOrder({ invoiceId, bookKey, telegramId, contactId, offerId, email }) {
-  if (!UUID.test(invoiceId) || !UUID.test(offerId) || !TAG_BY_BOOK[bookKey])
+export async function saveBookOrder({ invoiceId, bookKey, telegramId, offerId, email }) {
+  if (!UUID.test(invoiceId) || !UUID.test(offerId) || !BOOK_KEYS.has(bookKey))
     throw fail('Ошибка данных заказа', 422);
   await d1Query('/save', {
     invoiceId, bookKey,
     telegramId: String(telegramId || '0'),
-    contactId: contactId || '',
+    contactId: '', // Legacy D1 schema field; no contact lookup.
     offerId,
     emailDigest: emailDigest(email),
   });
@@ -94,31 +69,19 @@ export async function verifyLavaInvoice(invoiceId) {
   const payload = await response.json();
   return payload?.data?.invoice || payload?.data || payload?.result || payload;
 }
-function hasTag(tags, name) {
-  return tags.some(tag => (typeof tag === 'string' ? tag : tag?.name) === name);
-}
-export async function tagPaidInvoice(invoiceId, knownInvoice) {
+export async function recordPaidInvoice(invoiceId, knownInvoice) {
   const order = await loadBookOrder(invoiceId);
   if (!order) return { outcome: 'unknown' };
-  if (order.tagged) return { outcome: 'already_tagged', bookKey: order.book_key };
   const verified = knownInvoice || await verifyLavaInvoice(invoiceId);
   if (!invoicePaid(verified)) return { outcome: 'not_paid', bookKey: order.book_key };
-  if (!order.sendpulse_contact_id || String(order.telegram_user_id) === '0') return { outcome: 'unlinked', bookKey: order.book_key };
   if (!invoiceMatchesOrder(verified, order)) throw fail('Оплаченный счёт не соответствует заказу', 409);
+  if (order.tagged) return { outcome: 'already_recorded', bookKey: order.book_key };
   const lock = await d1Query('/lock', { invoiceId });
   if (!lock.locked) return { outcome: 'in_progress', bookKey: order.book_key };
   try {
-    const current = await findSendpulseContact(order.telegram_user_id);
-    if (current.id !== order.sendpulse_contact_id) throw fail('Контакт SendPulse изменился', 409);
-    const tag = TAG_BY_BOOK[order.book_key];
-    if (!hasTag(current.tags, tag)) {
-      await spFetch('/contacts/setTag', {
-        method: 'POST',
-        body: JSON.stringify({ contact_id: current.id, tags: [tag] }),
-      });
-    }
+    // Legacy D1 endpoint name: marks the verified invoice as processed.
     await d1Query('/tagged', { invoiceId });
-    return { outcome: 'tagged', bookKey: order.book_key };
+    return { outcome: 'recorded', bookKey: order.book_key };
   } catch (error) {
     await d1Query('/unlock', { invoiceId }).catch(() => {});
     throw error;
