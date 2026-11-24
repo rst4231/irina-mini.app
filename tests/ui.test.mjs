@@ -48,7 +48,9 @@ test('profile greets the user by first name and shows the localized date instead
   assert.match(html, /Привет, Пользователь!/);
   assert.match(html, /id="profile-date"/);
   assert.doesNotMatch(html, /id="profile-username"/);
-  assert.match(source, /getGreetingName\(sendPulseName\)/);
+  assert.match(source, /const telegramName = String\(user\?\.first_name \|\| ''\)\.trim\(\) \|\| profile\.name;/);
+  assert.match(source, /name\.textContent = t\('Привет, \{name\}!',\{name:t\(getGreetingName\(\)\)\}\);/);
+  assert.doesNotMatch(source, /getGreetingName\(sendPulseName\)/);
   assert.match(source, /formatProfileDate\(new Date\(\)/);
 });
 
@@ -111,8 +113,8 @@ test('stale Telegram navigation cache does not replace fresh review URL', async 
   assert.match(app, /function isCurrentCachedConfig\(cached\)/);
   assert.match(app, /Number\(cached\?\.config\?\.version\) >= DEFAULT_RUNTIME_CONFIG\.version/);
   assert.equal((app.match(/if \(isCurrentCachedConfig\(cached\)\) applyRuntimeConfig\(cached\.config\);/g) || []).length, 2);
-  assert.equal(config.version, 2);
-  assert.match(defaults, /version: 2,/);
+  assert.equal(config.version, 3);
+  assert.match(defaults, /version: 3,/);
 });
 
 test('application card and its freshness label are hidden by default without removing status logic', async () => {
@@ -123,4 +125,18 @@ test('application card and its freshness label are hidden by default without rem
   assert.match(source, /applicationCard\.hidden = paid \|\| !runtimeConfig\.features\.application;/);
   assert.match(source, /freshnessIndicator\.hidden = applicationCard\.hidden \|\| !text;/);
   assert.equal(config.features.application, false);
+});
+
+test('practice and account store cards are hidden by default while their routes remain intact', async () => {
+  const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../app.js', import.meta.url), 'utf8');
+  const config = JSON.parse(await readFile(new URL('../runtime-config.json', import.meta.url), 'utf8'));
+  assert.match(html, /id="practice-button"[^>]*\bhidden\b/);
+  assert.match(html, /id="account-store-button"[\s\S]*?target="_self"\s+hidden/);
+  assert.match(source, /practiceButton\.hidden = hasPaidTraining \|\| !runtimeConfig\.features\.practice;/);
+  assert.match(source, /accountStoreButton\.hidden = !runtimeConfig\.features\.store;/);
+  assert.equal(config.features.practice, false);
+  assert.equal(config.features.store, false);
+  assert.match(html, /href="https:\/\/irina-miniapp\.vercel\.app\/practice"/);
+  assert.match(html, /href="https:\/\/irina-miniapp\.vercel\.app\/store"/);
 });

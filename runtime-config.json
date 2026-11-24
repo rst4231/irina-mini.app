@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "book": {
     "prices": {
       "profit": {"rub": 690, "usd": 8.28},
@@ -11,6 +11,8 @@
     "recruitment": true,
     "about": true,
     "book": true,
+    "practice": false,
+    "store": false,
     "trustedBy": true,
     "channel": true,
     "mentor": true

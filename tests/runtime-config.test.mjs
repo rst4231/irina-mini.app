@@ -32,7 +32,7 @@ test('runtime config still supports feature switches and UI settings', () => {
 
 test('runtime config rejects unsafe colors and invalid versions', () => {
   const config = mergeRuntimeConfig({ version: 0, ui: { accent: 'red' } });
-  assert.equal(config.version, 2);
+  assert.equal(config.version, 3);
   assert.equal(config.ui.accent, '#347ef4');
 });
 
@@ -50,4 +50,14 @@ test('application status card defaults to hidden and can be toggled through runt
   assert.equal(mergeRuntimeConfig().features.application, false);
   assert.equal(mergeRuntimeConfig({ features: { application: true } }).features.application, true);
   assert.equal(mergeRuntimeConfig({ features: { application: 'true' } }).features.application, false);
+});
+
+test('practice and store are hidden by default and can be enabled independently through runtime config', () => {
+  const defaults = mergeRuntimeConfig();
+  assert.equal(defaults.features.practice, false);
+  assert.equal(defaults.features.store, false);
+  const enabled = mergeRuntimeConfig({features:{practice:true,store:true}});
+  assert.equal(enabled.features.practice, true);
+  assert.equal(enabled.features.store, true);
+  assert.equal(mergeRuntimeConfig({features:{practice:'true',store:'true'}}).features.store, false);
 });

@@ -24,9 +24,9 @@ if(hasTelegramContext){
 const user = telegram?.initDataUnsafe?.user;
 const profile = normalizeTelegramUser(user);
 
-function getGreetingName(sendPulseName = '') {
-  const preferredName = sendPulseName || String(user?.first_name || '').trim() || profile.name;
-  return preferredName.trim().split(/\s+/)[0] || 'Пользователь';
+function getGreetingName() {
+  const telegramName = String(user?.first_name || '').trim() || profile.name;
+  return telegramName.trim().split(/\s+/)[0] || 'Пользователь';
 }
 
 const PROFILE_STORAGE_KEY = 'irina.profile.v2';
@@ -350,6 +350,7 @@ function renderVisibility() {
   const hasPaidTraining = Boolean(lastProfileData?.hasPaymentTag);
   theoryButton.hidden = hasPaidTraining || !runtimeConfig.features.theory;
   practiceButton.hidden = hasPaidTraining || !runtimeConfig.features.practice;
+  accountStoreButton.hidden = !runtimeConfig.features.store;
   trustedByBlock.hidden = paid || !runtimeConfig.features.trustedBy;
   mentorButton.hidden = !paid || !runtimeConfig.features.mentor;
   footerChannel.hidden = paid || !runtimeConfig.features.channel;
@@ -484,8 +485,7 @@ function renderProfileData(data, { stale = false, savedAt = Date.now() } = {}) {
   lastProfileData = data;
   lastProfileStale = stale;
   lastProfileSavedAt = Number(savedAt) || Date.now();
-  const sendPulseName = typeof data?.sendPulseName === 'string' ? data.sendPulseName.trim() : '';
-  name.textContent = t('Привет, {name}!',{name:t(getGreetingName(sendPulseName))});
+  name.textContent = t('Привет, {name}!',{name:t(getGreetingName())});
   renderVisibility();
   if (!data?.hasPaymentTag || data.applicationRejected) renderApplicationStatus(data, { stale });
   else setApplicationLoading(false);

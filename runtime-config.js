@@ -27,7 +27,7 @@ const DEFAULT_APPLICATION_COPY = {
 };
 
 export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
-  version: 2,
+  version: 3,
   book: {prices: {profit: {rub:690,usd:8.28},beginner: {rub:590,usd:7.08}}},
   features: {
     application: false,
@@ -35,7 +35,8 @@ export const DEFAULT_RUNTIME_CONFIG = Object.freeze({
     about: true,
     book: true,
     theory: true,
-    practice: true,
+    practice: false,
+    store: false,
     trustedBy: true,
     channel: true,
     mentor: true,
