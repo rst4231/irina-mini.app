@@ -1,4 +1,4 @@
-import { extractLearningCookieHeader } from './learning-cookie.js';
+import { extractLearningCookieHeader } from './_learning-cookie.js';
 const SECTIONS=new Set(['theory','creatives','infrastructure','keitaro','launch']);
 const CLOUD='https://irina-learning-api.cpateammail.workers.dev';
 function respond(res,status,data){

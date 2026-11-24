@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
-import admin from '../api/store/admin.js';
+import admin from '../api/_store/admin.js';
 import {handleRequest} from '../cloudflare/irina-store-d1-worker.js';
 
 const secret='profit-tests-private-token-long-enough';

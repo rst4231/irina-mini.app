@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { createLearningCookie } from './learning-cookie.js';
+import { createLearningCookie } from './_learning-cookie.js';
 
 const DEFAULT_INIT_DATA_MAX_AGE_SECONDS = 21600;
 const MAX_FUTURE_SKEW_SECONDS = 60;

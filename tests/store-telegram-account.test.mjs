@@ -5,8 +5,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {telegramUserFromInitData} from '../lib/store/telegram.js';
 import {handleRequest} from '../cloudflare/irina-store-d1-worker.js';
-import accountHandler from '../api/store/account.js';
-import receiptHandler from '../api/store/order.js';
+import accountHandler from '../api/_store/account.js';
+import receiptHandler from '../api/_store/order.js';
 import {sha256} from '../lib/store/core.js';
 
 const bot='test-store-telegram-bot:abcdef';

@@ -59,9 +59,48 @@
   ],
   "rewrites": [
     {
+      "source": "/api/lava/checkout",
+      "destination": "/api/lava?__irina_action=checkout"
+    },
+    {
+      "source": "/api/lava/session",
+      "destination": "/api/lava?__irina_action=session"
+    },
+    {
+      "source": "/api/lava/status",
+      "destination": "/api/lava?__irina_action=status"
+    },
+    {
+      "source": "/api/lava/webhook",
+      "destination": "/api/lava?__irina_action=webhook"
+    },
+    {
+      "source": "/api/store/account",
+      "destination": "/api/store?__irina_action=account"
+    },
+    {
+      "source": "/api/store/admin",
+      "destination": "/api/store?__irina_action=admin"
+    },
+    {
+      "source": "/api/store/catalog",
+      "destination": "/api/store?__irina_action=catalog"
+    },
+    {
+      "source": "/api/store/order",
+      "destination": "/api/store?__irina_action=order"
+    },
+    {
+      "source": "/api/store/orders",
+      "destination": "/api/store?__irina_action=orders"
+    },
+    {
+      "source": "/api/store/verify-payment",
+      "destination": "/api/store?__irina_action=verify-payment"
+    },
+    {
       "source": "/learning-media/assets/:filename",
       "destination": "https://irina-learning-api.cpateammail.workers.dev/media/assets/:filename"
     }
   ]
 }
-

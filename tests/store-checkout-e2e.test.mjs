@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {handleRequest} from '../cloudflare/irina-store-d1-worker.js';
-import createOrder from '../api/store/orders.js';
-import verifyPayment from '../api/store/verify-payment.js';
-import readReceipt from '../api/store/order.js';
-import admin from '../api/store/admin.js';
+import createOrder from '../api/_store/orders.js';
+import verifyPayment from '../api/_store/verify-payment.js';
+import readReceipt from '../api/_store/order.js';
+import admin from '../api/_store/admin.js';
 import {USDT_TRC20} from '../lib/store/tron.js';
 
 const wallet='TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VW';

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createLearningCookie,verifyLearningCookie,getLearningCookieValue,extractLearningCookieHeader} from '../api/learning-cookie.js';
+import {createLearningCookie,verifyLearningCookie,getLearningCookieValue,extractLearningCookieHeader} from '../api/_learning-cookie.js';
 import fs from 'node:fs/promises';
 
 test('session accepts a valid signed Telegram id and preserves 6 hour secure cookie',()=>{

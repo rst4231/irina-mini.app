@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {quoteUsdCents,invoiceUnits,formatUsdt,thbUsdRate} from '../lib/store/fx.js';
 import {validateTronTransfer,USDT_TRC20} from '../lib/store/tron.js';
-import verifyHandler from '../api/store/verify-payment.js';
+import verifyHandler from '../api/_store/verify-payment.js';
 const wallet='TLEYJyCMjPjNXy3jFiyAfwTwXvgRuQY4VW',hash='a'.repeat(64),now=Date.parse('2026-10-19T12:00:00Z');
 const createdAt='2026-10-19T11:55:00Z';
 const transaction={hash,confirmed:true,revert:false,confirmations:20,contractRet:'SUCCESS',timestamp:now,trc20TransferInfo:[{contract_address:USDT_TRC20,to_address:wallet,type:'Transfer',decimals:6,status:0,amount_str:'17512345'}]};
